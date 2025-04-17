@@ -1,0 +1,40 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenAutomate.BotAgent.Common", "OpenAutomate.BotAgent.Common\OpenAutomate.BotAgent.Common.csproj", "{670AE4FC-E932-4377-9AE2-4BFCB05EEC93}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenAutomate.BotAgent.Service", "OpenAutomate.BotAgent.Service\OpenAutomate.BotAgent.Service.csproj", "{FA939119-C0FE-41F2-BCF4-0622611CF22E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenAutomate.BotAgent.UI", "OpenAutomate.BotAgent.UI\OpenAutomate.BotAgent.UI.csproj", "{A1915539-C903-47A5-A7A5-AC7EF11397DF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenAutomate.BotAgent.Installer", "OpenAutomate.BotAgent.Installer\OpenAutomate.BotAgent.Installer.csproj", "{349EFC3F-1097-4538-974B-AFF4E417753C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{670AE4FC-E932-4377-9AE2-4BFCB05EEC93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{670AE4FC-E932-4377-9AE2-4BFCB05EEC93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{670AE4FC-E932-4377-9AE2-4BFCB05EEC93}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{670AE4FC-E932-4377-9AE2-4BFCB05EEC93}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FA939119-C0FE-41F2-BCF4-0622611CF22E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FA939119-C0FE-41F2-BCF4-0622611CF22E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FA939119-C0FE-41F2-BCF4-0622611CF22E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FA939119-C0FE-41F2-BCF4-0622611CF22E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1915539-C903-47A5-A7A5-AC7EF11397DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1915539-C903-47A5-A7A5-AC7EF11397DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1915539-C903-47A5-A7A5-AC7EF11397DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1915539-C903-47A5-A7A5-AC7EF11397DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{349EFC3F-1097-4538-974B-AFF4E417753C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{349EFC3F-1097-4538-974B-AFF4E417753C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{349EFC3F-1097-4538-974B-AFF4E417753C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{349EFC3F-1097-4538-974B-AFF4E417753C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
