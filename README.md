@@ -55,17 +55,16 @@ The Bot Agent uses a layered architecture:
 1. Download the latest Bot Agent installer from the releases page
 2. Run the installer and follow the on-screen instructions
 3. After installation, the WPF application will launch automatically
-4. Connect to your OpenAutomate server and register the agent
+4. Connect to your OpenAutomate server and connect the agent
 5. Verify that the Windows Service is running
 
 ## Configuration
 
 Initial configuration via the WPF UI includes:
 
-1. **Server Connection**: Enter the OpenAutomate server URL
-2. **Authentication**: Provide tenant credentials
-3. **Agent Settings**: Configure agent name and basic settings
-4. **Registration**: Complete the registration process to obtain a machine key
+1. **Server Connection**: Enter the OpenAutomate server URL with tenant slug
+2. **Authentication**: Provide the Machine Key of created BotAgent of that Tenant
+
 
 Advanced configuration options include:
 
@@ -110,7 +109,7 @@ agent.log("Data processing complete", level="info")
 
 Assets (such as credentials, connection strings, and configuration values) are stored securely on the OpenAutomate server and can be accessed by authorized bot agents. The machine key authentication ensures that:
 
-1. Only registered bot agents can request assets
+1. Only connected bot agents can request assets
 2. Bot agents can only access assets explicitly granted to them
 3. All access attempts are logged for audit purposes
 
@@ -122,7 +121,7 @@ Common issues and their solutions:
 |-------|----------|
 | Service not starting | Check Windows Services, verify user permissions |
 | Connection failure | Ensure server URL is correct and network connectivity exists |
-| Registration errors | Verify tenant credentials are correct |
+| Registration errors | Verify tenant BotAgent Machine Key and Machine Name correct|
 | Python SDK errors | Ensure local API server is running, check port configuration |
 
 Logs are available at:
