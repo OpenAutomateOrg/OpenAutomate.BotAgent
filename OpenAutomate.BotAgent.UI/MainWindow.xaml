@@ -53,7 +53,7 @@
                 
                 <StackPanel Orientation="Horizontal" Grid.Column="0">
                     <Image Source="/Resources/logo.png" Width="48" Height="48" VerticalAlignment="Center"/>
-                    <TextBlock Text="OpenAutomate Assistant" Style="{StaticResource Title}" Foreground="{StaticResource PrimaryColor}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="OpenAutomate Agent" Style="{StaticResource Title}" Foreground="{StaticResource PrimaryColor}" Margin="12,0,0,0" VerticalAlignment="Center"/>
                 </StackPanel>
                 
                 <Button Grid.Column="1" Style="{StaticResource IconButton}" 
@@ -64,7 +64,7 @@
             </Grid>
 
             <!-- Title for Settings Section -->
-            <TextBlock Grid.Row="1" Text="Orchestrator Settings" Style="{StaticResource SubTitle}" Foreground="{StaticResource PrimaryColor}" Margin="0,0,0,16"/>
+            <TextBlock Grid.Row="1" Text="Connection Settings" Style="{StaticResource SubTitle}" Foreground="{StaticResource PrimaryColor}" Margin="0,0,0,16"/>
             
             <!-- Settings Card -->
             <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,0,0,20">
