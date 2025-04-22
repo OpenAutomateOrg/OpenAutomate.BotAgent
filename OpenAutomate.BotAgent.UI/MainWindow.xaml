@@ -4,9 +4,190 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:OpenAutomate.BotAgent.UI"
+        xmlns:viewmodels="clr-namespace:OpenAutomate.BotAgent.UI.ViewModels"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        Title="OpenAutomate Assistant" 
+        Height="580" 
+        Width="520"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource BackgroundColor}"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ResizeMode="CanMinimize">
+    
+    <Window.DataContext>
+        <viewmodels:MainViewModel />
+    </Window.DataContext>
+    
+    <Window.Resources>
+        <Storyboard x:Key="ConnectingAnimation">
+            <DoubleAnimation
+                Storyboard.TargetName="ConnectingEllipse"
+                Storyboard.TargetProperty="Opacity"
+                From="1.0" To="0.3" Duration="0:0:1"
+                AutoReverse="True" RepeatBehavior="Forever" />
+        </Storyboard>
+    </Window.Resources>
+    
+    <Window.Effect>
+        <DropShadowEffect ShadowDepth="2" BlurRadius="15" Opacity="0.2" Direction="270" />
+    </Window.Effect>
+    
+    <Border Background="{StaticResource BackgroundColor}" CornerRadius="8" BorderThickness="1" BorderBrush="{StaticResource BorderColor}">
+        <Grid Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-    </Grid>
+            <!-- Header -->
+            <Grid Grid.Row="0" Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel Orientation="Horizontal" Grid.Column="0">
+                    <Image Source="/Resources/logo.png" Width="48" Height="48" VerticalAlignment="Center"/>
+                    <TextBlock Text="OpenAutomate Assistant" Style="{StaticResource Title}" Foreground="{StaticResource PrimaryColor}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+                
+                <Button Grid.Column="1" Style="{StaticResource IconButton}" 
+                        Padding="0" VerticalAlignment="Top"
+                        Click="CloseButton_Click">
+                    <TextBlock Text="✕" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+            </Grid>
+
+            <!-- Title for Settings Section -->
+            <TextBlock Grid.Row="1" Text="Orchestrator Settings" Style="{StaticResource SubTitle}" Foreground="{StaticResource PrimaryColor}" Margin="0,0,0,16"/>
+            
+            <!-- Settings Card -->
+            <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,0,0,20">
+                <StackPanel>
+                    <!-- Machine Name -->
+                    <TextBlock Text="Machine Name" Style="{StaticResource Caption}"/>
+                    <TextBox Text="{Binding MachineName, Mode=OneWay}" 
+                            Style="{StaticResource CustomTextBox}" 
+                            Margin="0,0,0,16" 
+                            IsReadOnly="True"/>
+
+                    <!-- Orchestrator URL -->
+                    <TextBlock Text="Orchestrator URL" Style="{StaticResource Caption}"/>
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" 
+                                Text="{Binding OrchestratorUrl, UpdateSourceTrigger=PropertyChanged}" 
+                                Style="{StaticResource CustomTextBox}"
+                                IsEnabled="{Binding IsConnected, Converter={StaticResource BooleanToInvertedBooleanConverter}}"/>
+                        <Button Grid.Column="1" Style="{StaticResource IconButton}" 
+                                Margin="8,0,0,0"
+                                IsEnabled="{Binding IsConnected, Converter={StaticResource BooleanToInvertedBooleanConverter}}">
+                            <Path Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" 
+                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" 
+                                Stretch="Uniform" Width="16" Height="16"/>
+                        </Button>
+                    </Grid>
+
+                    <!-- Machine Key -->
+                    <TextBlock Text="Machine Key" Style="{StaticResource Caption}"/>
+                    <TextBox Text="{Binding MachineKey, UpdateSourceTrigger=PropertyChanged}" 
+                            Style="{StaticResource CustomTextBox}" 
+                            Margin="0,0,0,12"
+                            IsEnabled="{Binding IsConnected, Converter={StaticResource BooleanToInvertedBooleanConverter}}"/>
+                </StackPanel>
+            </Border>
+            
+            <!-- Title for Status Section -->
+            <TextBlock Grid.Row="3" Text="Status" Style="{StaticResource SubTitle}" Foreground="{StaticResource PrimaryColor}" Margin="0,0,0,16"/>
+            
+            <!-- Status Card -->
+            <Border Grid.Row="4" Style="{StaticResource Card}" VerticalAlignment="Top">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Text="Connection Status" Style="{StaticResource Caption}" Grid.Column="0"/>
+                        
+                        <StackPanel Orientation="Horizontal" Grid.Column="1" 
+                                   Visibility="{Binding IsConnecting, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Ellipse x:Name="ConnectingEllipse" Width="12" Height="12" Fill="{StaticResource PrimaryColor}" Margin="0,0,8,0"/>
+                            <TextBlock Text="Connecting..." Style="{StaticResource Small}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                    
+                    <Border BorderBrush="{StaticResource BorderColor}" BorderThickness="0,1,0,0" Margin="0,8,0,12"/>
+                    
+                    <Grid Margin="0,4,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <Ellipse Width="16" Height="16" Margin="0,0,12,0" Grid.Column="0">
+                            <Ellipse.Style>
+                                <Style TargetType="Ellipse">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                            <Setter Property="Fill" Value="{StaticResource SuccessColor}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsConnected}" Value="False">
+                                            <Setter Property="Fill" Value="{StaticResource DisabledColor}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Ellipse.Style>
+                        </Ellipse>
+                        
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="{Binding ConnectionStatus}" Style="{StaticResource Body}" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding StatusMessage}" 
+                                      Style="{StaticResource Small}" 
+                                      Visibility="{Binding StatusMessage, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            
+                            <TextBlock Margin="0,8,0,0" Style="{StaticResource Small}"
+                                      Visibility="{Binding LastConnected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <Run Text="Last connected: "/>
+                                <Run Text="{Binding LastConnected, StringFormat='{}{0:g}', Mode=OneWay}"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Footer with Buttons -->
+            <Grid Grid.Row="5" Margin="0,16,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <TextBlock Grid.Column="0" Text="Version 1.0.0" Style="{StaticResource Small}" VerticalAlignment="Center"/>
+                
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Disconnect" 
+                            Command="{Binding DisconnectCommand}" 
+                            Style="{StaticResource SecondaryButton}" 
+                            Width="100" Height="36" Margin="0,0,12,0"
+                            Visibility="{Binding IsConnected, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    
+                    <Button Content="Connect" 
+                            Command="{Binding ConnectCommand}" 
+                            Style="{StaticResource PrimaryButton}" 
+                            Width="100" Height="36"
+                            Visibility="{Binding IsConnected, Converter={StaticResource BooleanToInvertedVisibilityConverter}}"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
 </Window>
