@@ -159,3 +159,57 @@ For issues, feature requests, or questions:
 - File an issue on GitHub
 - Contact your OpenAutomate administrator
 - Email support at support@openautomateorg.com
+
+## Code Quality Analysis
+
+### SonarQube Analysis
+
+This repository is configured with automated SonarQube analysis to maintain code quality standards. The analysis focuses on the non-UI components of the Bot Agent:
+
+- OpenAutomate.BotAgent.Service
+- OpenAutomate.BotAgent.Common
+- OpenAutomate.BotAgent.SDK
+
+UI components (OpenAutomate.BotAgent.UI) and the installer (OpenAutomate.BotAgent.Installer) are excluded from analysis as they are Windows-specific and contain XAML/UI code that's less amenable to traditional code quality metrics.
+
+For a comprehensive overview of our code quality standards and practices, see the [Code Quality Guidelines](docs/code-quality-guidelines.md).
+
+#### How It Works
+
+1. The SonarQube analysis runs automatically on:
+   - Push to `develop` or `main` branches
+   - Pull requests targeting `develop` or `main` branches
+   - Manual triggering via GitHub Actions
+
+2. The workflow:
+   - Builds only the non-UI components
+   - Analyzes code quality metrics
+   - Generates reports viewable in the SonarQube dashboard
+
+3. The analysis enforces:
+   - Code complexity metrics
+   - Code duplication detection
+   - Security vulnerability scanning
+   - Adherence to coding standards
+
+#### Viewing Results
+
+SonarQube analysis results are available at: [http://sonar.openautomate.me](http://sonar.openautomate.me)
+
+#### Local Analysis
+
+To run SonarQube analysis locally:
+
+1. Install the SonarScanner for .NET:
+   ```
+   dotnet tool install --global dotnet-sonarscanner
+   ```
+
+2. Run the analysis:
+   ```
+   dotnet sonarscanner begin /k:"openautomate-botagent" /d:sonar.host.url="http://sonar.openautomate.me" /d:sonar.login="your-token"
+   dotnet build OpenAutomate.BotAgent.sln --configuration Release
+   dotnet sonarscanner end /d:sonar.login="your-token"
+   ```
+
+Replace `your-token` with your personal SonarQube token.
