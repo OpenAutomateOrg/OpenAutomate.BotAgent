@@ -77,12 +77,16 @@ jobs:
               "path": "OpenAutomate.BotAgent.sln",
               "projects": [
                 "OpenAutomate.BotAgent.Service\\OpenAutomate.BotAgent.Service.csproj",
-                "OpenAutomate.BotAgent.Common\\OpenAutomate.BotAgent.Common.csproj",
-                "OpenAutomate.BotAgent.SDK\\OpenAutomate.BotAgent.SDK.csproj"
+                "OpenAutomate.BotAgent.Common\\OpenAutomate.BotAgent.Common.csproj"
               ]
             }
           }
           EOF
+
+      # Step 7.1: List solution contents for debugging
+      - name: List solution contents
+        run: |
+          dotnet sln OpenAutomate.BotAgent.sln list
 
       # Step 8: Restore dependencies
       - name: Restore dependencies
