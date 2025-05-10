@@ -66,8 +66,6 @@ jobs:
             /d:sonar.login="$SONAR_TOKEN" \
             /d:sonar.exclusions="**/bin/**/*,**/obj/**/*,**/OpenAutomate.BotAgent.UI/**/*,**/OpenAutomate.BotAgent.Installer/**/*,**/*.xaml,**/*.xaml.cs,**/Windows/**/*,**/*Tests*/**,**/*Test*/**" \
             /d:sonar.coverage.exclusions="**/*" \
-            /d:sonar.cs.opencover.reportsPaths="" \
-            /d:sonar.cs.vstest.reportsPaths="" \
             /d:sonar.verbose=true
 
       # Step 7: Create solution filter for non-UI projects
