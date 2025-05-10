@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using OpenAutomate.BotAgent.Service.Core;
 using Microsoft.AspNetCore.Http.Connections.Client;
+using System.Security.Cryptography;
 
 namespace OpenAutomate.BotAgent.Service.Services
 {
@@ -23,6 +24,9 @@ namespace OpenAutomate.BotAgent.Service.Services
         private readonly SemaphoreSlim _connectionLock = new SemaphoreSlim(1, 1);
         private Timer _keepAliveTimer;
         private readonly TimeSpan _keepAliveInterval = TimeSpan.FromMinutes(1);
+        // Thread-safe random number generator for jitter calculations
+        private static readonly Random _jitterRandom = new Random();
+        private static readonly object _randomLock = new object();
         
         /// <summary>
         /// Event raised when connected to the server
@@ -195,7 +199,7 @@ namespace OpenAutomate.BotAgent.Service.Services
                 StopKeepAliveTimer();
                 
                 // Cancel any reconnect attempts
-                _reconnectCts.Cancel();
+                await _reconnectCts.CancelAsync();
                 _reconnectCts.Dispose();
                 
                 // Create a new token source to prevent previous reconnect tasks from continuing
@@ -254,13 +258,28 @@ namespace OpenAutomate.BotAgent.Service.Services
                     if (_connection?.State == HubConnectionState.Connected)
                     {
                         _logger.LogDebug("Sending keep-alive ping to server");
-                        // Use a lightweight ping method instead of a full status update
-                        await _connection.InvokeAsync("KeepAlive");
+                        // Instead of calling a non-existent hub method, use a protocol-level ping
+                        // or send a lightweight status update which we know exists
+                        
+                        // Option 1: If the server supports SendStatusUpdate without requiring an execution ID
+                        await _connection.InvokeAsync("SendStatusUpdate", "Heartbeat", null);
+                        
+                        // Option 2 (alternative): Use a lower-level ping that doesn't require a hub method
+                        // await _connection.SendCoreAsync("", new object[0]);
+                        
+                        _logger.LogDebug("Keep-alive ping sent successfully");
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Failed to send keep-alive ping");
+                    
+                    // Check if the connection is still in Connected state
+                    // If many pings fail, we might want to force a reconnection
+                    if (_connection?.State == HubConnectionState.Connected)
+                    {
+                        _logger.LogDebug("Connection still shows as connected despite ping failure");
+                    }
                 }
             }, null, _keepAliveInterval, _keepAliveInterval);
         }
@@ -349,7 +368,14 @@ namespace OpenAutomate.BotAgent.Service.Services
                     
                     // Exponential backoff with jitter
                     var delay = Math.Min(Math.Pow(2, retryAttempt), 60);
-                    var jitter = new Random().NextDouble() * 0.3 + 0.85; // 0.85-1.15
+                    
+                    // Generate thread-safe jitter value between 0.85 and 1.15
+                    double jitter;
+                    lock (_randomLock)
+                    {
+                        jitter = _jitterRandom.NextDouble() * 0.3 + 0.85;
+                    }
+                    
                     var delayWithJitter = TimeSpan.FromSeconds(delay * jitter);
                     
                     _logger.LogInformation($"Attempting to reconnect (attempt {retryAttempt}) in {delayWithJitter.TotalSeconds:F1} seconds");
@@ -425,7 +451,7 @@ namespace OpenAutomate.BotAgent.Service.Services
                 StopKeepAliveTimer();
                 
                 // Stop any automatic reconnection
-                _reconnectCts.Cancel();
+                _reconnectCts.CancelAsync().GetAwaiter().GetResult();
                 
                 // Stop the connection if it's not already stopped
                 if (_connection != null && _connection.State != HubConnectionState.Disconnected)
