@@ -258,14 +258,11 @@ namespace OpenAutomate.BotAgent.Service.Services
                     if (_connection?.State == HubConnectionState.Connected)
                     {
                         _logger.LogDebug("Sending keep-alive ping to server");
-                        // Instead of calling a non-existent hub method, use a protocol-level ping
-                        // or send a lightweight status update which we know exists
-                        
-                        // Option 1: If the server supports SendStatusUpdate without requiring an execution ID
+
+
                         await _connection.InvokeAsync("SendStatusUpdate", "Heartbeat", null);
                         
-                        // Option 2 (alternative): Use a lower-level ping that doesn't require a hub method
-                        // await _connection.SendCoreAsync("", new object[0]);
+
                         
                         _logger.LogDebug("Keep-alive ping sent successfully");
                     }
