@@ -1,35 +1,105 @@
 using System;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace OpenAutomate.BotAgent.UI.Models
 {
     /// <summary>
-    /// Model representing the Bot Agent configuration
+    /// Model class for the Bot Agent configuration
     /// </summary>
-    public class ConfigurationModel
+    public class ConfigurationModel : INotifyPropertyChanged
     {
+        private string _serverUrl = string.Empty;
+        private string _machineKey = string.Empty;
+        private string _machineName;
+        private bool _isConnected;
+        private string _loggingLevel;
+
         /// <summary>
-        /// The machine key used for authentication with the OpenAutomate server
+        /// Server URL including tenant slug (e.g., http://open-bot.live/)
         /// </summary>
-        public string MachineKey { get; set; }
-        
+        public string ServerUrl
+        {
+            get => _serverUrl;
+            set 
+            { 
+                if (_serverUrl != value)
+                {
+                    _serverUrl = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         /// <summary>
-        /// The URL of the OpenAutomate server (including tenant slug)
+        /// Machine key for authentication
         /// </summary>
-        public string OrchestratorUrl { get; set; }
-        
+        public string MachineKey
+        {
+            get => _machineKey;
+            set
+            {
+                if (_machineKey != value)
+                {
+                    _machineKey = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         /// <summary>
-        /// The name of the machine (automatically populated from system)
+        /// Name of the machine
         /// </summary>
-        public string MachineName { get; set; }
-        
+        public string MachineName
+        {
+            get => _machineName;
+            set
+            {
+                if (_machineName != value)
+                {
+                    _machineName = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         /// <summary>
-        /// Connection status
+        /// Indicates whether the bot is connected to the server
         /// </summary>
-        public bool IsConnected { get; set; }
-        
+        public bool IsConnected
+        {
+            get => _isConnected;
+            set
+            {
+                if (_isConnected != value)
+                {
+                    _isConnected = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         /// <summary>
-        /// The date and time of the last successful connection
+        /// Logging level (Debug, Info, Warning, Error)
         /// </summary>
-        public DateTime? LastConnected { get; set; }
+        public string LoggingLevel
+        {
+            get => _loggingLevel;
+            set
+            {
+                if (_loggingLevel != value)
+                {
+                    _loggingLevel = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
     }
 } 
