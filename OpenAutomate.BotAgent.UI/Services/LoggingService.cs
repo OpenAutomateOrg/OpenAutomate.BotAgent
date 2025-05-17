@@ -57,7 +57,7 @@ namespace OpenAutomate.BotAgent.UI.Services
                     outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
                 .CreateLogger();
                 
-            _logger.Information("OpenAutomate Bot Agent UI starting up");
+            _logger.Information("OpenAutomate Agent UI starting up");
         }
         
         /// <summary>

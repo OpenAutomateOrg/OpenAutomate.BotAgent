@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:OpenAutomate.BotAgent.UI"
         xmlns:vm="clr-namespace:OpenAutomate.BotAgent.UI.ViewModels"
         mc:Ignorable="d"
-        Title="OpenAutomate Bot Agent" 
+        Title="OpenAutomate Agent" 
         Height="600" Width="900" 
         WindowStartupLocation="CenterScreen" 
         Background="White"

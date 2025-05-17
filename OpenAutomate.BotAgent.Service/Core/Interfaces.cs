@@ -46,6 +46,12 @@ namespace OpenAutomate.BotAgent.Service.Core
         /// Sends status updates for all active executions
         /// </summary>
         Task SendStatusUpdatesAsync();
+        
+        /// <summary>
+        /// Checks if there are any active executions
+        /// </summary>
+        /// <returns>True if there are active executions, false otherwise</returns>
+        Task<bool> HasActiveExecutionsAsync();
     }
     
     /// <summary>
@@ -77,6 +83,13 @@ namespace OpenAutomate.BotAgent.Service.Core
         /// Sends a health check to the server
         /// </summary>
         Task SendHealthCheckAsync();
+        
+        /// <summary>
+        /// Updates the agent status on the server
+        /// </summary>
+        /// <param name="status">The new status (use AgentStatus constants)</param>
+        /// <param name="executionId">Optional execution ID for context</param>
+        Task UpdateStatusAsync(string status, string executionId = null);
         
         /// <summary>
         /// Gets an asset from the server
