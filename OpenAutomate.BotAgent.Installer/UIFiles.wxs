@@ -1,0 +1,217 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Fragment>
+        <Icon Id="OpenAutomateIcon" SourceFile="Resources\openautomateagent.ico" />
+    </Fragment>
+    <Fragment>
+        <DirectoryRef Id="INSTALLFOLDER">
+            <Directory Id="dir824FCFF15B3FD12109A6A03AFA791116" Name="net8.0-windows" />
+        </DirectoryRef>
+    </Fragment>
+    <Fragment>
+        <DirectoryRef Id="ProgramMenuFolder">
+            <Directory Id="OpenAutomateBotAgentMenu" Name="OpenAutomate Bot Agent" />
+        </DirectoryRef>
+    </Fragment>
+    <Fragment>
+        <ComponentGroup Id="UIFiles">
+            <Component Id="cmpEF903D384E8E57BFBF2BA724C996B2B6" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{087F1F5D-2B20-4209-8CF0-01AF681F5FC4}">
+                <File Id="filEACE1BA7134ABDD7A33931016184A090" KeyPath="yes" Source="$(var.UIOutputDir)\appsettings.Development.json" />
+            </Component>
+            <Component Id="cmpBA2C73E405F4BBF4A328A759B314FCFA" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{165CB3E2-B3CF-4BF1-879D-FA7F9A8B5559}">
+                <File Id="fil8603A1AAEF3D070121F98A6131CD0823" KeyPath="yes" Source="$(var.UIOutputDir)\appsettings.json" />
+            </Component>
+            <Component Id="cmpFA639EB69A695480D0DAF390792CD70E" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{6030703F-C969-4DEC-8BBC-93066F2DD7D7}">
+                <File Id="filE330E412B3C8E7C2FFEA0692BF415BC5" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.AspNetCore.Connections.Abstractions.dll" />
+            </Component>
+            <Component Id="cmpB34B584E233AC878BF3C1525514AC91C" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{AADEBC76-4525-4C9F-8AC0-7E9D9A327302}">
+                <File Id="fil51F4FA2D0AA0FF437B89924077153033" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.AspNetCore.Http.Connections.Client.dll" />
+            </Component>
+            <Component Id="cmpD2F59ABF434D0C99B7C8C9AF6FEDCD81" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{7C0778B8-AFF3-4326-9007-7512528A2106}">
+                <File Id="filC8FDDD231E6402120BF4F9408E2147A1" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.AspNetCore.Http.Connections.Common.dll" />
+            </Component>
+            <Component Id="cmp4F383572F89978B924F3DFB60B48F8E3" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{C3DFEF49-1B23-4621-AA4E-4DA9B9ED28DA}">
+                <File Id="fil9EBDA04F53937A052CDCFD18ADA22213" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.AspNetCore.SignalR.Client.Core.dll" />
+            </Component>
+            <Component Id="cmpA6AE0F9C5FEA62779CAE8197A1B24BD5" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{3EEE72AB-8524-4B3F-8177-526F60C396BD}">
+                <File Id="fil3398851068A467CEAC7ADA1162D905E8" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.AspNetCore.SignalR.Client.dll" />
+            </Component>
+            <Component Id="cmp5C98DAB0A490DB588E881D8A0936A1D8" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{28897F8C-FC87-4FA5-91AB-799E1390136F}">
+                <File Id="fil85B58498E95E0408FC911674CF7EABC6" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.AspNetCore.SignalR.Common.dll" />
+            </Component>
+            <Component Id="cmp64FDE6CB2033DBA666E306749FB17D44" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{A0B4860D-5859-4ADA-BEC3-6E450BD8039F}">
+                <File Id="fil09C7C273EA327D0269ED0F24EF168E02" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.AspNetCore.SignalR.Protocols.Json.dll" />
+            </Component>
+            <Component Id="cmpB7CB44EADCE82DBD408A0924B9759E42" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{0312C9BB-E3D9-4EF9-BB33-F6AC3E902686}">
+                <File Id="fil9DAA43C05EA76AEC4DB13C368457EE9D" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Configuration.Binder.dll" />
+            </Component>
+            <Component Id="cmpB699D3228C84A8E705DD29D0B01CB8D4" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{7A6F4F7F-3B5F-480E-B605-8571DB30CC8C}">
+                <File Id="filB26EC42EEE363AC1854CD895BCE3D372" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Configuration.FileExtensions.dll" />
+            </Component>
+            <Component Id="cmpA022149AF0969E89A0991B7A09564981" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{A502FF64-C662-42B2-903E-4E2CCB8C462B}">
+                <File Id="fil1ABD3957354521C0CDF5CC421F03A5C2" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Configuration.Json.dll" />
+            </Component>
+            <Component Id="cmpBC6E76D22558290D16088A01B9227486" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{CF58B014-5AF2-4885-87B9-ED808A0592EA}">
+                <File Id="fil47B74BD1041B90FF50F4636745C87CD1" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Configuration.UserSecrets.dll" />
+            </Component>
+            <Component Id="cmpC8075DC627F981DC2268A263874BB989" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{4DAA6044-C11B-4BAD-9FEB-21E3BAFB2FA9}">
+                <File Id="fil21FCFF42B1A68D008B5678028CB48273" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.DependencyInjection.Abstractions.dll" />
+            </Component>
+            <Component Id="cmp0419E5919952DF1A24919A6258B49476" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{8CD60244-9428-46B6-986C-09026EA598E1}">
+                <File Id="fil46974E21C5A09F08738C53E3F795EFEB" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.DependencyInjection.dll" />
+            </Component>
+            <Component Id="cmp9FD5234C31A9FA74A743C9288F37E5D5" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{D8ABD154-FA1F-4DE5-9950-7066558DF37F}">
+                <File Id="fil2D15718EB9FD3DD946805EC83FDE266E" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Diagnostics.Abstractions.dll" />
+            </Component>
+            <Component Id="cmpDAAF2191552E6231F68D3CD4E082558F" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{1C22F498-0B9A-4D1A-AF54-782B87EA58BF}">
+                <File Id="filC7A90A2C24AABD31C71AE23B48291EE4" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Diagnostics.dll" />
+            </Component>
+            <Component Id="cmp908D43508A5C15076D0AD1F2D6004E38" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{F60E85F0-930A-443E-8AA4-304C8C493EA7}">
+                <File Id="fil5541A1813982877BD01D2F3676E853D4" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Features.dll" />
+            </Component>
+            <Component Id="cmp51C8D36D11A1A0BDBD7E8D9E05AF2813" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{245DCF84-894D-4434-9541-8EB45EBC01CF}">
+                <File Id="fil62826489CF5900D07E64FF58ACE11E3B" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Hosting.Abstractions.dll" />
+            </Component>
+            <Component Id="cmp5452C6BE6891880E87E56ED4E1AB6635" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{5DCBD6D4-F3FE-4FD4-9103-1914711608DB}">
+                <File Id="filF1DCD4A77A2E3A7BB22CDFE40B652103" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Hosting.dll" />
+            </Component>
+            <Component Id="cmp90F15FC265D238F643AA64C63B236AE5" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{760921F4-DF79-4E71-A3B3-774ADCA8033E}">
+                <File Id="filBD2FB8F30F2B5AF8F84BEBA260F41EAE" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Hosting.WindowsServices.dll" />
+            </Component>
+            <Component Id="cmp1A81B236302FB95EF96675EC7FC2AC8B" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{0B02518B-7827-4DDB-9E35-FAAB5B045930}">
+                <File Id="fil78F8D13657D382B0CCE94E568EF8B1D3" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Http.dll" />
+            </Component>
+            <Component Id="cmp395B7B19D7D76AC8CBEC8FC3A8EC52B5" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{573C494A-F9E1-4294-821F-1E3F4D3B5888}">
+                <File Id="fil8C0D7DAEA7C128B285166AE8D583625B" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Logging.Abstractions.dll" />
+            </Component>
+            <Component Id="cmp31733CD79313E83650865BF9AB4715AC" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{0FC573F3-B8E4-4275-A11A-3E1B5004F089}">
+                <File Id="fil8EFA9F0BFA4F7E76CE5D1AC5BCCEF9D7" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Logging.Configuration.dll" />
+            </Component>
+            <Component Id="cmpA4E0C3040A4683E22D689FCBF2786D2B" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{CF94C109-855E-4DE4-9780-200AEC44BF88}">
+                <File Id="filEB45B04008F382F1DAA15FEA1AD82CF6" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Logging.Console.dll" />
+            </Component>
+            <Component Id="cmp0166159465B34C6E9271973E933217E3" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{D2944981-49EF-451A-AE54-E926856E6B4E}">
+                <File Id="fil85150768B94DF4EE9313192DD95EE7B0" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Logging.Debug.dll" />
+            </Component>
+            <Component Id="cmpB30EE36CAC83422B3E4DBDF51FFD9C0D" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{27CFDEB3-EDDA-4004-8307-B271E800D5C5}">
+                <File Id="fil89CB664ACF615C303916B613658168E0" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Logging.dll" />
+            </Component>
+            <Component Id="cmpF919078685946F9914DBE6E9F3961AC6" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{E3A33D4C-A404-4FA7-A716-8000A9EE60A7}">
+                <File Id="fil8B81A15562BB218C172141713C6409BC" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Logging.EventLog.dll" />
+            </Component>
+            <Component Id="cmp9829007236A3170E5242D5E6D1D33FF1" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{E7C6C6B9-EA86-46D6-A88C-8C708DA72992}">
+                <File Id="filCB4134015E2C242233D94040E5B164A0" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Logging.EventSource.dll" />
+            </Component>
+            <Component Id="cmpD17BCF07E77469C68091B8A0ED395988" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{B90ECEE0-3B94-46A6-9509-85E27E7919F7}">
+                <File Id="fil9D4CD07A4856B06F25EC93F24912AD77" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.ObjectPool.dll" />
+            </Component>
+            <Component Id="cmp30AD82C9E33D12BA5EBE6E5DAEEB8950" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{10B9B95A-3729-4415-9EB5-37B45A8CE7F5}">
+                <File Id="fil19871AB81668CAB0D9D5FEC6307152CE" KeyPath="yes" Source="$(var.UIOutputDir)\Microsoft.Extensions.Options.dll" />
+            </Component>
+            <Component Id="cmp9F85B5513F1F4F25927C86E9AAB0BB4D" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{5B9AE2D4-ABC4-4D0B-86C6-E25DDA36C1DC}">
+                <File Id="fil95F90070DD9E1529D0736AB96D6909CB" KeyPath="yes" Source="$(var.UIOutputDir)\Newtonsoft.Json.dll" />
+            </Component>
+            <Component Id="cmp99C326C230A209AB0124D68269489F7B" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{65E93D35-292A-42C2-B14D-AB9E76965EC7}">
+                <File Id="fil1040153F5AA92C3FC053F8FD0F3CA184" KeyPath="yes" Source="$(var.UIOutputDir)\OpenAutomate.BotAgent.Service.deps.json" />
+            </Component>
+            <Component Id="cmp97E0C43CF483CCD9A44661732619A175" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{926C8D42-E41C-4B6B-890F-E49CD35A3630}">
+                <File Id="fil90622BDAA5E31C456C90E68D5C756965" KeyPath="yes" Source="$(var.UIOutputDir)\OpenAutomate.BotAgent.Service.dll" />
+            </Component>
+            <Component Id="cmp625A77A2B90E59C6BA6077D692E1206F" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{D900CB52-D6FA-439F-865A-13E39AD65E3B}">
+                <File Id="fil25631844C9EEE8A9A574F1CF8503C2B3" KeyPath="yes" Source="$(var.UIOutputDir)\OpenAutomate.BotAgent.Service.exe" />
+            </Component>
+            <Component Id="cmpA6728B1AE39AF0C1F22CAA5D582BE6FF" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{8EFB0E65-164F-4E00-9077-8F20EF576A3E}">
+                <File Id="filC49B6449F5B0C0BAE53222B9A481A49E" KeyPath="yes" Source="$(var.UIOutputDir)\OpenAutomate.BotAgent.Service.pdb" />
+            </Component>
+            <Component Id="cmpD664216F6C45F10C04249FC51FDC137D" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{F996D76C-CAA0-4B06-9DBB-030352D5F7C7}">
+                <File Id="fil4AC6C5325384A92A2BEC0D100CE483B6" KeyPath="yes" Source="$(var.UIOutputDir)\OpenAutomate.BotAgent.Service.runtimeconfig.json" />
+            </Component>
+            <Component Id="cmp6C528B5D9F9C86957D2659FD402C0525" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{FD832D3B-970F-4858-B96E-73092CC57505}">
+                <File Id="fil0BBAB7FC471E5E8B9BF2D2758E39E1CE" KeyPath="yes" Source="$(var.UIOutputDir)\OpenAutomate.BotAgent.UI.deps.json" />
+            </Component>
+            <Component Id="cmp83036232ECC3E76C412F02EE069A1B73" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{54118C98-9C4D-422E-90A1-0B9FE7F02981}">
+                <File Id="fil2DF5FBE57CE93B63A141B5BBDE3D63C1" KeyPath="yes" Source="$(var.UIOutputDir)\OpenAutomate.BotAgent.UI.dll" />
+            </Component>
+            <Component Id="OpenAutomateBotAgentShortcut" Directory="OpenAutomateBotAgentMenu" Guid="{A1B2C3D4-E5F6-47A8-9B0C-1234567890AB}">
+                <Shortcut Id="StartMenuShortcut"
+                          Name="OpenAutomate Bot Agent"
+                          WorkingDirectory="INSTALLFOLDER"
+                          Target="[INSTALLFOLDER]net8.0-windows\OpenAutomate.BotAgent.UI.exe"
+                          Icon="OpenAutomateIcon" />
+                <RemoveFolder Id="RemoveOpenAutomateBotAgentMenu" Directory="OpenAutomateBotAgentMenu" On="uninstall" />
+                <RegistryValue Root="HKCU" Key="Software\OpenAutomate\BotAgent" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+            </Component>
+            <Component Id="cmp3D5EE1C74BD1F3055CF9187AB7468CFA" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{FD7B450B-1D2E-4FD3-AF01-26A75DB9949E}">
+                <File Id="filCFDC5694B3F47080C05E0BD1EE8D78C6" KeyPath="yes" Source="$(var.UIOutputDir)\OpenAutomate.BotAgent.UI.exe" />
+            </Component>
+            <Component Id="cmp1D5F9FF4DB1F11DC97AAC94EC01DC10D" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{DA11CB6A-9E63-49E0-8640-FA93742A9D16}">
+                <File Id="fil7D627EEE311D53FD1CFDA6B48251B823" KeyPath="yes" Source="$(var.UIOutputDir)\OpenAutomate.BotAgent.UI.pdb" />
+            </Component>
+            <Component Id="cmp9B9079118A61D35790D3CEB20D50D14E" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{D77A863E-9893-4799-B371-AD301D784E5A}">
+                <File Id="fil55C8BFCC41B1B8A77CE775937B5B0FF7" KeyPath="yes" Source="$(var.UIOutputDir)\OpenAutomate.BotAgent.UI.runtimeconfig.json" />
+            </Component>
+            <Component Id="cmp26C3972EADB1E7B6331A78898B98C51B" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{581B51B6-6BEF-458D-B10D-67B04B34BDAB}">
+                <File Id="filC59A5C8045CB880F7CC8A2230778AC4E" KeyPath="yes" Source="$(var.UIOutputDir)\PresentationCore.dll" />
+            </Component>
+            <Component Id="cmpC27AE05BC14E8568A8EBF05B0907CDD8" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{18CA0C29-B88D-4F34-A559-989202A99B21}">
+                <File Id="filE1D53E93F57902C317637CF4E8E87F8C" KeyPath="yes" Source="$(var.UIOutputDir)\PresentationFramework.dll" />
+            </Component>
+            <Component Id="cmp0936244BC48C470CA38A64E37FDB4BFD" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{7EB97A41-2252-455A-932E-40A30EDBC52B}">
+                <File Id="fil068A315A2D7CBDBF9F996D1E61750D6D" KeyPath="yes" Source="$(var.UIOutputDir)\Serilog.dll" />
+            </Component>
+            <Component Id="cmpD5052F1628843105DDAFC2ACDE873008" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{3EDB109C-7318-4D11-ADF1-B47752540C8B}">
+                <File Id="filB94EDFAB96ACA7739FEF4BDDB18230A2" KeyPath="yes" Source="$(var.UIOutputDir)\Serilog.Extensions.Hosting.dll" />
+            </Component>
+            <Component Id="cmpAC777D19AEFDDA9831CC58386D7E192F" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{4C31898B-95D2-4931-BEA2-133C0095E502}">
+                <File Id="fil1309128DE7FFD094A6B35993E5CF7F58" KeyPath="yes" Source="$(var.UIOutputDir)\Serilog.Extensions.Logging.dll" />
+            </Component>
+            <Component Id="cmp11370BFC30E2056C854C06B610950F7C" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{BDC54E2A-EA11-4C15-B0BA-184FA703C878}">
+                <File Id="fil1531B7478C16C465C6633F1BA01F80B0" KeyPath="yes" Source="$(var.UIOutputDir)\Serilog.Sinks.Console.dll" />
+            </Component>
+            <Component Id="cmpDEF1825740DF74932BDD856B591BE283" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{34BEF4E5-745C-45F4-A479-2BECDC0C8E47}">
+                <File Id="filB12D368E8C8CCC6231BDA188B5534F5E" KeyPath="yes" Source="$(var.UIOutputDir)\Serilog.Sinks.File.dll" />
+            </Component>
+            <Component Id="cmp59ABCFB035BC80152491078B2DF09540" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{365340F7-D7CD-40AA-BF4A-276534C9011F}">
+                <File Id="fil4C42460EE461C91183BE0FE8D5DC36FD" KeyPath="yes" Source="$(var.UIOutputDir)\System.Diagnostics.EventLog.dll" />
+            </Component>
+            <Component Id="cmpE0FCCECE33C5EB3716CBE4895187E66E" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{D2F244EB-3691-4B7D-981D-9DB2A43678BE}">
+                <File Id="filA7D592F8E1A52DF8A9A21C65AE742AEB" KeyPath="yes" Source="$(var.UIOutputDir)\System.Net.WebSockets.WebSocketProtocol.dll" />
+            </Component>
+            <Component Id="cmp2412B7F528CC0B7A54341B0C5226C296" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{B50CBBCD-DAE5-4A96-BA6C-159111C1B1C8}">
+                <File Id="filC6FBDCB3C87C055100FE339CEDAE2DFE" KeyPath="yes" Source="$(var.UIOutputDir)\System.ServiceProcess.ServiceController.dll" />
+            </Component>
+            <Component Id="cmp076669A7615904DE2F7DA71DB7743542" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{2CCDAE9E-C81A-45A9-8768-98124B9930AE}">
+                <File Id="fil7C7D5262A0168A8FC50626852B882B1E" KeyPath="yes" Source="$(var.UIOutputDir)\System.Xaml.dll" />
+            </Component>
+            <Component Id="cmp3FD4D364541A65741C07CEB515B850CB" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{728A4ABE-3BD2-45F5-B0B3-964F7D564D34}">
+                <File Id="filBFA724DB15477B78B401D7408BA7BEA1" KeyPath="yes" Source="$(var.UIOutputDir)\WindowsBase.dll" />
+            </Component>
+            <Component Id="cmpE8EE4825492CDCF9F754D56E5CCE48AB" Directory="dir373475D06757D7B2849234EF8560E60F" Guid="{716FDC1D-5C42-4EEB-BBA6-D0DF8E14C542}">
+                <File Id="fil0F5CD629A084A4870CED504FBC481D56" KeyPath="yes" Source="$(var.UIOutputDir)\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.dll" />
+            </Component>
+            <Component Id="cmp53DF1A5928266B5BF9262079B046EA1F" Directory="dir373475D06757D7B2849234EF8560E60F" Guid="{D859854E-8A2E-43B7-AC10-91D34DD9CE2A}">
+                <File Id="fil000B8F1BCC9162EF8CF69CEE70050D48" KeyPath="yes" Source="$(var.UIOutputDir)\runtimes\win\lib\net8.0\System.ServiceProcess.ServiceController.dll" />
+            </Component>
+        </ComponentGroup>
+    </Fragment>
+    <Fragment>
+        <DirectoryRef Id="dir470FDA369D8F599874133BE96F58C1D0">
+            <Directory Id="dir16B253DA74B0B95AFA9B28E7F9E2A275" Name="win" />
+        </DirectoryRef>
+    </Fragment>
+    <Fragment>
+        <DirectoryRef Id="dirE069CCC97C46F628D82393941B732F78">
+            <Directory Id="dir373475D06757D7B2849234EF8560E60F" Name="net8.0" />
+        </DirectoryRef>
+    </Fragment>
+    <Fragment>
+        <DirectoryRef Id="dir824FCFF15B3FD12109A6A03AFA791116">
+            <Directory Id="dir470FDA369D8F599874133BE96F58C1D0" Name="runtimes" />
+        </DirectoryRef>
+    </Fragment>
+    <Fragment>
+        <DirectoryRef Id="dir16B253DA74B0B95AFA9B28E7F9E2A275">
+            <Directory Id="dirE069CCC97C46F628D82393941B732F78" Name="lib" />
+        </DirectoryRef>
+    </Fragment>
+</Wix>

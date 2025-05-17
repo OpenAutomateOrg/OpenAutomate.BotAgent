@@ -6,10 +6,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Hosting.Server.Features;
-using Microsoft.AspNetCore.SignalR;
 using OpenAutomate.BotAgent.Service.Core;
 using OpenAutomate.BotAgent.Service.Services;
 
@@ -73,10 +71,9 @@ namespace OpenAutomate.BotAgent.Service
                     _logger.LogInformation("Auto-connecting to server");
                     await _serverCommunication.ConnectAsync();
                     
-                    if (_serverCommunication.IsConnected)
-                    {
-                        await _assetManager.SyncAssetsAsync();
-                    }
+                    // Note: We no longer sync assets on startup
+                    // Assets will be retrieved on-demand directly from the server
+                    // This ensures we always have the latest values and don't store sensitive data in memory
                 }
                 
                 // Use a longer interval for health checks (5 minutes instead of 1)
@@ -91,9 +88,16 @@ namespace OpenAutomate.BotAgent.Service
                         (DateTime.UtcNow - lastHealthCheck) >= healthCheckInterval)
                     {
                         await _serverCommunication.SendHealthCheckAsync();
-                        await _executionManager.SendStatusUpdatesAsync();
+                        
+                        // Check if we're running any executions
+                        bool isBusy = await _executionManager.HasActiveExecutionsAsync();
+                        
+                        // Update status based on execution state
+                        string status = isBusy ? AgentStatus.Busy : AgentStatus.Available;
+                        await _serverCommunication.UpdateStatusAsync(status);
+                        
                         lastHealthCheck = DateTime.UtcNow;
-                        _logger.LogDebug("Performed periodic health check and status update");
+                        _logger.LogDebug("Performed periodic health check and status update: {Status}", status);
                     }
                     
                     // Use a shorter delay for the loop to remain responsive
@@ -119,9 +123,10 @@ namespace OpenAutomate.BotAgent.Service
                 _logger.LogInformation("Bot Agent Service stopped");
             }
         }
-        
+
         /// <summary>
         /// Starts the SignalR hub for UI real-time communication
+        /// this feature is for future use, not in capstone project scope
         /// </summary>
         private async Task StartSignalRHubAsync()
         {

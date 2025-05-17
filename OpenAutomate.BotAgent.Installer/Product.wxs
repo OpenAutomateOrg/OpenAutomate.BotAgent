@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Product Id="*" Name="OpenAutomate.Agent" Language="1033" Version="1.0.0.0" Manufacturer="OpenAutomate" UpgradeCode="c67fabd8-cdc2-4603-9a12-e2868d32a9de">
+		<Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
+
+		<MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+		<MediaTemplate EmbedCab="yes"/>
+		<UIRef Id="WixUI_Minimal" />
+		<UIRef Id="WixUI_ErrorProgressText" />
+		<Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+
+		<Feature Id="ProductFeature" Title="OpenAutomate.Agent" Level="1">
+			<ComponentGroupRef Id="ServiceFiles" />
+			<ComponentGroupRef Id="UIFiles" />
+		</Feature>
+	</Product>
+
+	<Fragment>
+		<Directory Id="TARGETDIR" Name="SourceDir">
+			<Directory Id="ProgramFilesFolder">
+				<Directory Id="INSTALLFOLDER" Name="OpenAutomate.Agent">
+					<!-- Files will be installed here -->
+				</Directory>
+			</Directory>
+			<Directory Id="ProgramMenuFolder" Name="Programs" />
+		</Directory>
+	</Fragment>
+</Wix>

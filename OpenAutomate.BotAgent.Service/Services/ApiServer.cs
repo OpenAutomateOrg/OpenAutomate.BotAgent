@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.SignalR;
 using OpenAutomate.BotAgent.Service.Core;
 using OpenAutomate.BotAgent.Service.Models;
+using System.IO;
+using System.Collections.Generic;
 
 namespace OpenAutomate.BotAgent.Service.Services
 {
@@ -19,6 +21,7 @@ namespace OpenAutomate.BotAgent.Service.Services
         private readonly IConfigurationService _configService;
         private readonly IServerCommunication _serverCommunication;
         private readonly IMachineKeyManager _machineKeyManager;
+        private readonly IAssetManager _assetManager;
         private HttpListener _listener;
         private bool _isRunning;
         private bool _isDisposed;
@@ -30,12 +33,14 @@ namespace OpenAutomate.BotAgent.Service.Services
             ILogger<ApiServer> logger,
             IConfigurationService configService,
             IServerCommunication serverCommunication,
-            IMachineKeyManager machineKeyManager)
+            IMachineKeyManager machineKeyManager,
+            IAssetManager assetManager)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _configService = configService ?? throw new ArgumentNullException(nameof(configService));
             _serverCommunication = serverCommunication ?? throw new ArgumentNullException(nameof(serverCommunication));
             _machineKeyManager = machineKeyManager ?? throw new ArgumentNullException(nameof(machineKeyManager));
+            _assetManager = assetManager ?? throw new ArgumentNullException(nameof(assetManager));
         }
         
         /// <summary>
@@ -176,7 +181,26 @@ namespace OpenAutomate.BotAgent.Service.Services
                             SendMethodNotAllowed(response);
                         break;
                         
+                    // Asset endpoints
+                    case "/api/assets":
+                        if (method == "GET")
+                            await HandleGetAssetsAsync(request, response);
+                        else
+                            SendMethodNotAllowed(response);
+                        break;
+                        
                     default:
+                        // Check if the path matches /api/assets/{key}
+                        if (path.StartsWith("/api/assets/") && method == "GET")
+                        {
+                            var key = path.Substring("/api/assets/".Length);
+                            if (!string.IsNullOrEmpty(key))
+                            {
+                                await HandleGetAssetByKeyAsync(request, response, key);
+                                break;
+                            }
+                        }
+                        
                         SendNotFound(response);
                         break;
                 }
@@ -204,7 +228,7 @@ namespace OpenAutomate.BotAgent.Service.Services
                 }
                 catch
                 {
-                    // Ignore failures when closing response
+                    // Ignore failures when closing the response
                 }
             }
         }
@@ -359,6 +383,66 @@ namespace OpenAutomate.BotAgent.Service.Services
             }
         }
         
+        /// <summary>
+        /// Handles a request to get all accessible assets
+        /// </summary>
+        private async Task HandleGetAssetsAsync(HttpListenerRequest request, HttpListenerResponse response)
+        {
+            try
+            {
+                // Get all asset keys
+                var assetKeys = await _assetManager.GetAllAssetKeysAsync();
+                
+                // Return the asset keys
+                await SendJsonResponseAsync(response, assetKeys);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Unable to get assets: {Message}", ex.Message);
+                SendErrorResponse(response, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting assets");
+                SendErrorResponse(response, "An error occurred while retrieving assets");
+            }
+        }
+        
+        /// <summary>
+        /// Handles a request to get an asset by key
+        /// </summary>
+        private async Task HandleGetAssetByKeyAsync(HttpListenerRequest request, HttpListenerResponse response, string key)
+        {
+            try
+            {
+                // Get the asset value
+                var assetValue = await _assetManager.GetAssetAsync(key);
+                
+                // Send the asset value as plain text
+                response.ContentType = "text/plain";
+                response.StatusCode = (int)HttpStatusCode.OK;
+                
+                var bytes = Encoding.UTF8.GetBytes(assetValue);
+                response.ContentLength64 = bytes.Length;
+                await response.OutputStream.WriteAsync(bytes, 0, bytes.Length);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Asset not found: {Message}", ex.Message);
+                SendErrorResponse(response, ex.Message, HttpStatusCode.NotFound);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Unable to get asset: {Message}", ex.Message);
+                SendErrorResponse(response, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting asset '{Key}'", key);
+                SendErrorResponse(response, $"An error occurred while retrieving asset '{key}'");
+            }
+        }
+        
         #endregion
         
         #region Response Helpers
@@ -426,16 +510,24 @@ namespace OpenAutomate.BotAgent.Service.Services
         /// <summary>
         /// Sends an error response
         /// </summary>
-        private void SendErrorResponse(HttpListenerResponse response, string message)
+        private void SendErrorResponse(HttpListenerResponse response, string message, HttpStatusCode statusCode = HttpStatusCode.InternalServerError)
         {
-            response.StatusCode = (int)HttpStatusCode.InternalServerError;
-            response.ContentType = "application/json";
-            
-            var json = JsonSerializer.Serialize(new { error = message });
-            var bytes = Encoding.UTF8.GetBytes(json);
-            
-            response.ContentLength64 = bytes.Length;
-            response.OutputStream.Write(bytes, 0, bytes.Length);
+            try
+            {
+                response.StatusCode = (int)statusCode;
+                response.ContentType = "application/json";
+                
+                var error = new { error = message };
+                var json = JsonSerializer.Serialize(error);
+                
+                var bytes = Encoding.UTF8.GetBytes(json);
+                response.ContentLength64 = bytes.Length;
+                response.OutputStream.Write(bytes, 0, bytes.Length);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending error response");
+            }
         }
         
         #endregion

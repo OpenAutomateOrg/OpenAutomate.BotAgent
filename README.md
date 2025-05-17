@@ -144,7 +144,6 @@ For developers extending or customizing the Bot Agent:
 OpenAutomate.BotAgent/
 ├── OpenAutomate.BotAgent.Service/     # Windows Service
 ├── OpenAutomate.BotAgent.UI/          # WPF Application
-├── OpenAutomate.BotAgent.Common/      # Shared code and models
 ├── OpenAutomate.BotAgent.Installer/   # WiX installer project
 └── OpenAutomate.BotAgent.SDK/         # Python SDK
 ```
@@ -167,7 +166,6 @@ For issues, feature requests, or questions:
 This repository is configured with automated SonarQube analysis to maintain code quality standards. The analysis focuses on the non-UI components of the Bot Agent:
 
 - OpenAutomate.BotAgent.Service
-- OpenAutomate.BotAgent.Common
 - OpenAutomate.BotAgent.SDK
 
 UI components (OpenAutomate.BotAgent.UI) and the installer (OpenAutomate.BotAgent.Installer) are excluded from analysis as they are Windows-specific and contain XAML/UI code that's less amenable to traditional code quality metrics.
