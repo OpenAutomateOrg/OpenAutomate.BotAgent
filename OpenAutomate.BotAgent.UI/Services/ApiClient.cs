@@ -17,7 +17,7 @@ namespace OpenAutomate.BotAgent.UI.Services
     public class ApiClient : IApiClient, IDisposable
     {
         private readonly HttpClient _httpClient;
-        private readonly int _apiPort = 8081; // Default port for the Bot Agent service
+        private readonly int _apiPort = 8080; // Default port for the Bot Agent service
         private bool _disposed;
         
         // Throttling for health and status checks

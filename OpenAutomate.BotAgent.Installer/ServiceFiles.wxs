@@ -1,8 +1,8 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
     <Fragment>
         <DirectoryRef Id="INSTALLFOLDER">
-            <Directory Id="dir73D925AE8D269EFA5D58CC0C77DF1660" Name="net8.0" />
+            <Directory Id="dir73D925AE8D269EFA5D58CC0C77DF1660" Name="Service" />
         </DirectoryRef>
     </Fragment>
     <Fragment>
@@ -165,12 +165,6 @@
             </Component>
             <Component Id="cmpCD0EBE0B6C1A4BEBBA33294F8438CC8F" Directory="dir73D925AE8D269EFA5D58CC0C77DF1660" Guid="{7B13E32F-5EC4-4554-84F5-B15CAC6237C0}">
                 <File Id="fil3324C7A28B7B9F2804E11C2958A82CE1" KeyPath="yes" Source="$(var.ServiceOutputDir)\System.ServiceProcess.ServiceController.dll" />
-            </Component>
-            <Component Id="cmpE5AC7221A24F3A21B4C27A90C5DA6126" Directory="dirDF83E2B3744F8CB2DE2BFD2E684A15A4" Guid="{3B965B71-CA8B-4E05-BCEF-3FABD80DEA4C}">
-                <File Id="filD2C0847F08FBBCE240669BA64989F792" KeyPath="yes" Source="$(var.ServiceOutputDir)\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.dll" />
-            </Component>
-            <Component Id="cmp9A8E31C301D01CFB56E4B3A44A7C1E65" Directory="dirDF83E2B3744F8CB2DE2BFD2E684A15A4" Guid="{A1F8D3A3-5982-4C13-8F9C-BA73192F4B9B}">
-                <File Id="fil5C7BAF26190490A06727105D77B768FE" KeyPath="yes" Source="$(var.ServiceOutputDir)\runtimes\win\lib\net8.0\System.ServiceProcess.ServiceController.dll" />
             </Component>
         </ComponentGroup>
     </Fragment>

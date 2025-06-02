@@ -1,11 +1,11 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
     <Fragment>
         <Icon Id="OpenAutomateIcon" SourceFile="Resources\openautomateagent.ico" />
     </Fragment>
     <Fragment>
         <DirectoryRef Id="INSTALLFOLDER">
-            <Directory Id="dir824FCFF15B3FD12109A6A03AFA791116" Name="net8.0-windows" />
+            <Directory Id="dir824FCFF15B3FD12109A6A03AFA791116" Name="UI" />
         </DirectoryRef>
     </Fragment>
     <Fragment>
@@ -111,21 +111,7 @@
             <Component Id="cmp9F85B5513F1F4F25927C86E9AAB0BB4D" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{5B9AE2D4-ABC4-4D0B-86C6-E25DDA36C1DC}">
                 <File Id="fil95F90070DD9E1529D0736AB96D6909CB" KeyPath="yes" Source="$(var.UIOutputDir)\Newtonsoft.Json.dll" />
             </Component>
-            <Component Id="cmp99C326C230A209AB0124D68269489F7B" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{65E93D35-292A-42C2-B14D-AB9E76965EC7}">
-                <File Id="fil1040153F5AA92C3FC053F8FD0F3CA184" KeyPath="yes" Source="$(var.UIOutputDir)\OpenAutomate.BotAgent.Service.deps.json" />
-            </Component>
-            <Component Id="cmp97E0C43CF483CCD9A44661732619A175" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{926C8D42-E41C-4B6B-890F-E49CD35A3630}">
-                <File Id="fil90622BDAA5E31C456C90E68D5C756965" KeyPath="yes" Source="$(var.UIOutputDir)\OpenAutomate.BotAgent.Service.dll" />
-            </Component>
-            <Component Id="cmp625A77A2B90E59C6BA6077D692E1206F" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{D900CB52-D6FA-439F-865A-13E39AD65E3B}">
-                <File Id="fil25631844C9EEE8A9A574F1CF8503C2B3" KeyPath="yes" Source="$(var.UIOutputDir)\OpenAutomate.BotAgent.Service.exe" />
-            </Component>
-            <Component Id="cmpA6728B1AE39AF0C1F22CAA5D582BE6FF" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{8EFB0E65-164F-4E00-9077-8F20EF576A3E}">
-                <File Id="filC49B6449F5B0C0BAE53222B9A481A49E" KeyPath="yes" Source="$(var.UIOutputDir)\OpenAutomate.BotAgent.Service.pdb" />
-            </Component>
-            <Component Id="cmpD664216F6C45F10C04249FC51FDC137D" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{F996D76C-CAA0-4B06-9DBB-030352D5F7C7}">
-                <File Id="fil4AC6C5325384A92A2BEC0D100CE483B6" KeyPath="yes" Source="$(var.UIOutputDir)\OpenAutomate.BotAgent.Service.runtimeconfig.json" />
-            </Component>
+
             <Component Id="cmp6C528B5D9F9C86957D2659FD402C0525" Directory="dir824FCFF15B3FD12109A6A03AFA791116" Guid="{FD832D3B-970F-4858-B96E-73092CC57505}">
                 <File Id="fil0BBAB7FC471E5E8B9BF2D2758E39E1CE" KeyPath="yes" Source="$(var.UIOutputDir)\OpenAutomate.BotAgent.UI.deps.json" />
             </Component>
@@ -136,7 +122,7 @@
                 <Shortcut Id="StartMenuShortcut"
                           Name="OpenAutomate Bot Agent"
                           WorkingDirectory="INSTALLFOLDER"
-                          Target="[INSTALLFOLDER]net8.0-windows\OpenAutomate.BotAgent.UI.exe"
+                          Target="[INSTALLFOLDER]UI\OpenAutomate.BotAgent.UI.exe"
                           Icon="OpenAutomateIcon" />
                 <RemoveFolder Id="RemoveOpenAutomateBotAgentMenu" Directory="OpenAutomateBotAgentMenu" On="uninstall" />
                 <RegistryValue Root="HKCU" Key="Software\OpenAutomate\BotAgent" Name="installed" Type="integer" Value="1" KeyPath="yes" />

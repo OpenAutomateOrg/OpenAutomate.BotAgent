@@ -12,7 +12,7 @@ namespace OpenAutomate.BotAgent.UI.Services
     {
         private HubConnection _connection;
         private bool _disposed;
-        private int _apiPort = 8081; // Default port
+        private int _apiPort = 8080; // Default port
         
         /// <summary>
         /// Event raised when connection status changes
@@ -37,7 +37,7 @@ namespace OpenAutomate.BotAgent.UI.Services
         /// <summary>
         /// Initializes the SignalR connection
         /// </summary>
-        public async Task InitializeAsync(int apiPort = 8081)
+        public async Task InitializeAsync(int apiPort = 8080)
         {
             try
             {
