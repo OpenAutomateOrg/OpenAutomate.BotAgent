@@ -28,6 +28,6 @@ namespace OpenAutomate.BotAgent.Service.Models
         /// <summary>
         /// Port for the local API server
         /// </summary>
-        public int ApiPort { get; set; } = 8081;
+        public int ApiPort { get; set; } = 8080;
     }
 } 

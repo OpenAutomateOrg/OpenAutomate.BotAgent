@@ -10,21 +10,23 @@
     <OutputType>Package</OutputType>
     <ServiceOutputDir>..\OpenAutomate.BotAgent.Service\bin\Release\net8.0\</ServiceOutputDir>
     <UIOutputDir>..\OpenAutomate.BotAgent.UI\bin\Release\net8.0-windows\</UIOutputDir>
-    <DefineConstants>ServiceOutputDir=$(ServiceOutputDir);UIOutputDir=$(UIOutputDir)</DefineConstants>
+    <ExecutorOutputDir>..\OpenAutomate.BotAgent.Executor\bin\Release\net8.0\</ExecutorOutputDir>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
-    <DefineConstants>Debug</DefineConstants>
+    <DefineConstants>Debug;ServiceOutputDir=$(ServiceOutputDir);UIOutputDir=$(UIOutputDir);ExecutorOutputDir=$(ExecutorOutputDir)</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+    <DefineConstants>ServiceOutputDir=$(ServiceOutputDir);UIOutputDir=$(UIOutputDir);ExecutorOutputDir=$(ExecutorOutputDir)</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Product.wxs" />
     <Compile Include="ServiceFiles.wxs" />
     <Compile Include="UIFiles.wxs" />
+    <Compile Include="ExecutorFiles.wxs" />
     <Content Include="Resources\openautomateagent.ico" />
   </ItemGroup>
   <ItemGroup>

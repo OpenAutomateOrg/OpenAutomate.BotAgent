@@ -26,4 +26,8 @@
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\OpenAutomate.BotAgent.Executor\OpenAutomate.BotAgent.Executor.csproj" />
+  </ItemGroup>
+
 </Project>

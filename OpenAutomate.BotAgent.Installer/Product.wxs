@@ -12,6 +12,7 @@
 		<Feature Id="ProductFeature" Title="OpenAutomate.Agent" Level="1">
 			<ComponentGroupRef Id="ServiceFiles" />
 			<ComponentGroupRef Id="UIFiles" />
+			<ComponentGroupRef Id="ExecutorFiles" />
 		</Feature>
 	</Product>
 

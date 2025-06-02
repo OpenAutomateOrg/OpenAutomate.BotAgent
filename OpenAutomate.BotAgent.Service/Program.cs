@@ -31,10 +31,13 @@ try
             
             // Register core services
             services.AddSingleton<IAssetManager, AssetManager>(); // Use the real implementation
-            services.AddSingleton<IExecutionManager, MockExecutionManager>(); // Still using mock for execution
+            services.AddSingleton<IExecutionManager, ExecutionManager>(); // Use the real execution manager
             services.AddSingleton<IServerCommunication, ServerCommunication>();
             services.AddSingleton<IMachineKeyManager, MachineKeyManager>();
             services.AddSingleton<IConfigurationService, ConfigurationService>();
+            
+            // Register package download service and its dependencies
+            services.AddHttpClient<IPackageDownloadService, PackageDownloadService>();
             
             // Register SignalR client for server communication
             services.AddSingleton<BotAgentSignalRClient>();
@@ -61,13 +64,4 @@ catch (Exception ex)
 finally
 {
     await Log.CloseAndFlushAsync();
-}
-
-// Mock implementation for temporarily resolving dependencies
-class MockExecutionManager : IExecutionManager
-{
-    public Task<string> StartExecutionAsync(object executionData) => Task.FromResult("mock-execution-id");
-    public Task CancelExecutionAsync(string executionId) => Task.CompletedTask;
-    public Task SendStatusUpdatesAsync() => Task.CompletedTask;
-    public Task<bool> HasActiveExecutionsAsync() => Task.FromResult(false); // Default to no active executions
 }

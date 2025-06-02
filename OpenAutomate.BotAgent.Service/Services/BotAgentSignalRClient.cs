@@ -6,7 +6,8 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using OpenAutomate.BotAgent.Service.Core;
 using Microsoft.AspNetCore.Http.Connections.Client;
-using System.Security.Cryptography;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace OpenAutomate.BotAgent.Service.Services
 {
@@ -24,9 +25,11 @@ namespace OpenAutomate.BotAgent.Service.Services
         private readonly SemaphoreSlim _connectionLock = new SemaphoreSlim(1, 1);
         private Timer _keepAliveTimer;
         private readonly TimeSpan _keepAliveInterval = TimeSpan.FromMinutes(1);
-        // Thread-safe random number generator for jitter calculations
         private static readonly Random _jitterRandom = new Random();
-        private static readonly object _randomLock = new object();
+        
+        // Simple deduplication for execution commands
+        private readonly HashSet<string> _processedExecutionIds = new HashSet<string>();
+        private readonly object _executionLock = new object();
         
         /// <summary>
         /// Event raised when connected to the server
@@ -70,23 +73,14 @@ namespace OpenAutomate.BotAgent.Service.Services
             
             var serverUrl = config.ServerUrl.TrimEnd('/');
             
-            // The URL already includes the tenant slug (e.g., https://openautomateapp.com/acme-corp)
-            // So we simply append the hub path to it
             _connection = new HubConnectionBuilder()
                 .WithUrl($"{serverUrl}/hubs/botagent?machineKey={config.MachineKey}", options => 
                 {
-                    // Set WebSockets as preferred transport with LongPolling fallback
                     options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets | 
                                          Microsoft.AspNetCore.Http.Connections.HttpTransportType.LongPolling;
-                    
-                    // Configure any additional HttpConnectionOptions here
                     options.SkipNegotiation = false;
-                    
-                    // Note: HandshakeTimeout is not available in this version
-                    // We'll rely on the default timeout values
                 })
                 .WithAutomaticReconnect(new RetryPolicy())
-                // Increase server timeout to 2 minutes (longer than the keep-alive interval)
                 .WithServerTimeout(TimeSpan.FromMinutes(2))
                 .Build();
             
@@ -110,7 +104,7 @@ namespace OpenAutomate.BotAgent.Service.Services
             _connection.Reconnected += connectionId => 
             {
                 _isReconnecting = false;
-                _logger.LogInformation($"SignalR reconnected. ConnectionId: {connectionId}");
+                _logger.LogInformation($"SignalR reconnected.");
                 StartKeepAliveTimer();
                 Connected?.Invoke();
                 return Task.CompletedTask;
@@ -124,7 +118,6 @@ namespace OpenAutomate.BotAgent.Service.Services
                 
                 if (!_isReconnecting && !_reconnectCts.IsCancellationRequested)
                 {
-                    // Try to reconnect if not already reconnecting and not cancelled
                     _ = TryReconnectWithBackoffAsync(_reconnectCts.Token);
                 }
                 
@@ -139,28 +132,21 @@ namespace OpenAutomate.BotAgent.Service.Services
         /// </summary>
         public async Task ConnectAsync()
         {
-            // Use a lock to prevent multiple concurrent connection attempts
             await _connectionLock.WaitAsync();
             try
             {
-                // Check if already connected or connecting
                 if (_connection.State != HubConnectionState.Disconnected)
                 {
-                    _logger.LogDebug($"Connection is already in state {_connection.State}, not attempting to connect");
+                    _logger.LogDebug($"Connection is already in state {_connection.State}");
                     return;
                 }
                 
                 _logger.LogInformation("Connecting to SignalR hub...");
                 await _connection.StartAsync();
-                _logger.LogInformation($"Connected to SignalR hub. ConnectionId: {_connection.ConnectionId}");
+                _logger.LogInformation("Connected to SignalR hub.");
                 
-                // Start the keep-alive timer
                 StartKeepAliveTimer();
-                
-                // Raise the Connected event
                 Connected?.Invoke();
-                
-                // Send initial status update
                 await SendStatusUpdateAsync("Ready");
             }
             catch (Exception ex)
@@ -168,7 +154,6 @@ namespace OpenAutomate.BotAgent.Service.Services
                 _logger.LogError(ex, "Failed to connect to SignalR hub");
                 Disconnected?.Invoke();
                 
-                // Try to reconnect with backoff
                 if (!_reconnectCts.IsCancellationRequested)
                 {
                     _ = TryReconnectWithBackoffAsync(_reconnectCts.Token);
@@ -194,18 +179,10 @@ namespace OpenAutomate.BotAgent.Service.Services
                 }
                 
                 _logger.LogInformation("Disconnecting from SignalR hub...");
-                
-                // Stop the keep-alive timer
                 StopKeepAliveTimer();
-                
-                // Cancel any reconnect attempts
                 await _reconnectCts.CancelAsync();
                 _reconnectCts.Dispose();
-                
-                // Create a new token source to prevent previous reconnect tasks from continuing
                 _reconnectCts = new CancellationTokenSource();
-                
-                // Stop the connection
                 await _connection.StopAsync();
                 
                 _logger.LogInformation("Disconnected from SignalR hub");
@@ -257,26 +234,12 @@ namespace OpenAutomate.BotAgent.Service.Services
                 {
                     if (_connection?.State == HubConnectionState.Connected)
                     {
-                        _logger.LogDebug("Sending keep-alive ping to server");
-
-
-                        await _connection.InvokeAsync("SendStatusUpdate", "Heartbeat", null);
-                        
-
-                        
-                        _logger.LogDebug("Keep-alive ping sent successfully");
+                        await _connection.InvokeAsync("KeepAlive");
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Failed to send keep-alive ping");
-                    
-                    // Check if the connection is still in Connected state
-                    // If many pings fail, we might want to force a reconnection
-                    if (_connection?.State == HubConnectionState.Connected)
-                    {
-                        _logger.LogDebug("Connection still shows as connected despite ping failure");
-                    }
                 }
             }, null, _keepAliveInterval, _keepAliveInterval);
         }
@@ -300,31 +263,74 @@ namespace OpenAutomate.BotAgent.Service.Services
         {
             try
             {
+                _logger.LogInformation("Received command: {Command} with payload: {Payload}", command, JsonSerializer.Serialize(payload));
+                
                 switch (command)
                 {
                     case "ExecutePackage":
-                        var executionData = JsonSerializer.Deserialize<object>(
-                            JsonSerializer.Serialize(payload));
-                        await _executionManager.StartExecutionAsync(executionData);
+                        // Extract executionId for deduplication
+                        string executionId = null;
+                        try
+                        {
+                            var payloadJson = JsonSerializer.Serialize(payload);
+                            var payloadDict = JsonSerializer.Deserialize<Dictionary<string, object>>(payloadJson);
+                            if (payloadDict.TryGetValue("executionId", out var execIdObj))
+                            {
+                                executionId = execIdObj.ToString();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to extract executionId from payload for deduplication");
+                        }
+                        
+                        // Simple deduplication check
+                        if (!string.IsNullOrEmpty(executionId))
+                        {
+                            lock (_executionLock)
+                            {
+                                if (_processedExecutionIds.Contains(executionId))
+                                {
+                                    _logger.LogWarning("Duplicate ExecutePackage command received for executionId: {ExecutionId}. Ignoring.", executionId);
+                                    return;
+                                }
+                                _processedExecutionIds.Add(executionId);
+                                
+                                // Clean up old entries to prevent memory buildup (keep only last 100)
+                                if (_processedExecutionIds.Count > 100)
+                                {
+                                    var oldestEntries = _processedExecutionIds.Take(50).ToList();
+                                    foreach (var entry in oldestEntries)
+                                    {
+                                        _processedExecutionIds.Remove(entry);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        _logger.LogInformation("Processing ExecutePackage command for executionId: {ExecutionId}", executionId ?? "unknown");
+                        await _executionManager.StartExecutionAsync(payload);
                         break;
                         
                     case "CancelExecution":
-                        var executionId = payload.ToString();
-                        await _executionManager.CancelExecutionAsync(executionId);
+                        var cancelExecutionId = payload.ToString();
+                        _logger.LogInformation("Processing CancelExecution command for executionId: {ExecutionId}", cancelExecutionId);
+                        await _executionManager.CancelExecutionAsync(cancelExecutionId);
                         break;
                         
                     case "Heartbeat":
+                        _logger.LogDebug("Processing Heartbeat command");
                         await SendStatusUpdateAsync("Ready");
                         break;
                         
                     default:
-                        _logger.LogWarning($"Unknown command received: {command}");
+                        _logger.LogWarning("Unknown command received: {Command}", command);
                         break;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error handling command: {command}");
+                _logger.LogError(ex, "Error handling command: {Command}", command);
             }
         }
         
@@ -333,7 +339,6 @@ namespace OpenAutomate.BotAgent.Service.Services
         /// </summary>
         private async Task TryReconnectWithBackoffAsync(CancellationToken cancellationToken)
         {
-            // Check if AutoStart is enabled before attempting to reconnect
             var config = _configService.GetConfiguration();
             if (!config.AutoStart)
             {
@@ -346,14 +351,11 @@ namespace OpenAutomate.BotAgent.Service.Services
             {
                 try
                 {
-                    // Check token cancellation before each attempt
                     if (cancellationToken.IsCancellationRequested)
                     {
-                        _logger.LogInformation("Reconnect cancelled by request");
                         break;
                     }
                     
-                    // Check again before each reconnect attempt in case it was changed
                     config = _configService.GetConfiguration();
                     if (!config.AutoStart)
                     {
@@ -365,51 +367,27 @@ namespace OpenAutomate.BotAgent.Service.Services
                     
                     // Exponential backoff with jitter
                     var delay = Math.Min(Math.Pow(2, retryAttempt), 60);
-                    
-                    // Generate thread-safe jitter value between 0.85 and 1.15
-                    double jitter;
-                    lock (_randomLock)
-                    {
-                        jitter = _jitterRandom.NextDouble() * 0.3 + 0.85;
-                    }
-                    
+                    double jitter = _jitterRandom.NextDouble() * 0.3 + 0.85;
                     var delayWithJitter = TimeSpan.FromSeconds(delay * jitter);
                     
                     _logger.LogInformation($"Attempting to reconnect (attempt {retryAttempt}) in {delayWithJitter.TotalSeconds:F1} seconds");
-                    
                     await Task.Delay(delayWithJitter, cancellationToken);
                     
-                    // Check cancellation after delay
                     if (cancellationToken.IsCancellationRequested)
                     {
-                        _logger.LogInformation("Reconnect cancelled after delay");
                         break;
                     }
                     
-                    // Check again right before connecting
-                    config = _configService.GetConfiguration();
-                    if (!config.AutoStart)
-                    {
-                        _logger.LogInformation("Stopping reconnect attempt because AutoStart is now disabled");
-                        break;
-                    }
-                    
-                    // Use the connection lock to prevent race conditions
                     await _connectionLock.WaitAsync(cancellationToken);
                     try
                     {
-                        // Check if we're already connected or reconnecting through automatic reconnect
                         if (_connection.State != HubConnectionState.Disconnected)
                         {
-                            _logger.LogInformation($"Not reconnecting because connection is in state {_connection.State}");
                             break;
                         }
                         
-                        // Now it's safe to reconnect
                         await _connection.StartAsync(cancellationToken);
                         _logger.LogInformation($"Successfully reconnected after {retryAttempt} attempts");
-                        
-                        // Exit the loop after successful reconnection
                         break;
                     }
                     finally
@@ -419,16 +397,12 @@ namespace OpenAutomate.BotAgent.Service.Services
                 }
                 catch (InvalidOperationException ex) when (ex.Message.Contains("cannot be started if it is not in the Disconnected state"))
                 {
-                    // Special case for the race condition exception
-                    _logger.LogInformation("Stopped reconnect attempt because the connection state changed");
-                    // Exit the loop - if it's already connecting or connected, we don't need to retry
                     break;
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, $"Failed to reconnect (attempt {retryAttempt})");
                     
-                    // If we've tried 10 times, wait longer before continuing
                     if (retryAttempt % 10 == 0)
                     {
                         await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
@@ -444,19 +418,14 @@ namespace OpenAutomate.BotAgent.Service.Services
         {
             try
             {
-                // Stop the keep-alive timer
                 StopKeepAliveTimer();
-                
-                // Stop any automatic reconnection
                 _reconnectCts.CancelAsync().GetAwaiter().GetResult();
                 
-                // Stop the connection if it's not already stopped
                 if (_connection != null && _connection.State != HubConnectionState.Disconnected)
                 {
                     _connection.StopAsync().GetAwaiter().GetResult();
                 }
                 
-                // Dispose of resources
                 _connection?.DisposeAsync().AsTask().GetAwaiter().GetResult();
                 _reconnectCts.Dispose();
                 _connectionLock.Dispose();
@@ -474,13 +443,11 @@ namespace OpenAutomate.BotAgent.Service.Services
         {
             public TimeSpan? NextRetryDelay(RetryContext retryContext)
             {
-                // Do not attempt to reconnect if maximum retries reached
                 if (retryContext.PreviousRetryCount >= 5)
                 {
                     return null;
                 }
                 
-                // Exponential backoff: 1s, 2s, 4s, 8s, 16s
                 return TimeSpan.FromSeconds(Math.Pow(2, retryContext.PreviousRetryCount));
             }
         }

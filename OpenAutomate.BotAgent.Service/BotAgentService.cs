@@ -134,7 +134,7 @@ namespace OpenAutomate.BotAgent.Service
             {
                 var config = _configService.GetConfiguration();
                 // Use a different port (API port + 1) for SignalR to avoid conflict with API server
-                var signalRPort = config.ApiPort + 1; // Typically 8082 if API is on 8081
+                var signalRPort = config.ApiPort + 1; // Typically 8082 if API is on 8080
                 
                 _logger.LogInformation("Starting SignalR hub on port {Port}", signalRPort);
                 
