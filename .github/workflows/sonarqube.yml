@@ -42,10 +42,12 @@ jobs:
             /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
             /d:sonar.exclusions="**/bin/**,**/obj/**,**/OpenAutomate.BotAgent.UI/**,**/OpenAutomate.BotAgent.Installer/**"
 
-      - name: Build solution
+      - name: Build solution (excluding installer)
         run: |
-          dotnet restore OpenAutomate.BotAgent.sln
-          dotnet build OpenAutomate.BotAgent.sln --no-restore
+          dotnet restore OpenAutomate.BotAgent.Service/OpenAutomate.BotAgent.Service.csproj
+          dotnet restore OpenAutomate.BotAgent.Executor/OpenAutomate.BotAgent.Executor.csproj
+          dotnet build OpenAutomate.BotAgent.Service/OpenAutomate.BotAgent.Service.csproj --no-restore
+          dotnet build OpenAutomate.BotAgent.Executor/OpenAutomate.BotAgent.Executor.csproj --no-restore
 
       - name: End SonarQube analysis
         run: dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
