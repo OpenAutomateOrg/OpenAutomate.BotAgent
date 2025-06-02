@@ -36,8 +36,12 @@ jobs:
             /d:sonar.issue.ignore.multicriteria.roslyn1.ruleKey=external_roslyn:* \
             /d:sonar.issue.ignore.multicriteria.roslyn1.resourceKey=*
 
-      - name: Build solution
-        run: dotnet build --no-restore
+      - name: Restore and build cross-platform projects
+        run: |
+          dotnet restore OpenAutomate.BotAgent.Service/OpenAutomate.BotAgent.Service.csproj
+          dotnet restore OpenAutomate.BotAgent.Executor/OpenAutomate.BotAgent.Executor.csproj
+          dotnet build OpenAutomate.BotAgent.Service/OpenAutomate.BotAgent.Service.csproj --no-restore
+          dotnet build OpenAutomate.BotAgent.Executor/OpenAutomate.BotAgent.Executor.csproj --no-restore
 
       - name: End SonarQube analysis
         run: dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
