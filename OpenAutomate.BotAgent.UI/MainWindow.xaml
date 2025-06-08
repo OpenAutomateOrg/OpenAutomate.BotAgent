@@ -5,9 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:OpenAutomate.BotAgent.UI"
         xmlns:vm="clr-namespace:OpenAutomate.BotAgent.UI.ViewModels"
+        xmlns:controls="clr-namespace:OpenAutomate.BotAgent.UI.Controls"
         mc:Ignorable="d"
-        Title="OpenAutomate Agent" 
-        Height="600" Width="900" 
+        Title="OpenAutomate Agent"
+        Height="570" Width="570"
         WindowStartupLocation="CenterScreen" 
         Background="White"
         WindowStyle="None"
@@ -19,41 +20,46 @@
     <Window.Resources>
         <vm:MainViewModel x:Key="MainViewModel" />
         
-        <!-- Colors -->
-        <SolidColorBrush x:Key="PrimaryColor" Color="#FF5722" />  <!-- Orange -->
-        <SolidColorBrush x:Key="SecondaryColor" Color="#FF7043" /> <!-- Light Orange -->
-        <SolidColorBrush x:Key="AccentColor" Color="#FF3D00" /> <!-- Dark Orange -->
-        <SolidColorBrush x:Key="BackgroundColor" Color="White" />
-        <SolidColorBrush x:Key="TextColor" Color="#212121" />
-        <SolidColorBrush x:Key="BorderColor" Color="#E0E0E0" />
-        <SolidColorBrush x:Key="SidebarColor" Color="#263238" /> <!-- Dark Background -->
+        <!-- Professional Orange Color Palette -->
+        <SolidColorBrush x:Key="PrimaryColor" Color="#EA580C" />  <!-- Professional Orange -->
+        <SolidColorBrush x:Key="SecondaryColor" Color="#FB923C" /> <!-- Light Orange -->
+        <SolidColorBrush x:Key="AccentColor" Color="#C2410C" /> <!-- Dark Orange -->
+        <SolidColorBrush x:Key="BackgroundColor" Color="#F7FAFC" /> <!-- Light Gray Background -->
+        <SolidColorBrush x:Key="TextColor" Color="#2D3748" />
+        <SolidColorBrush x:Key="TextSecondaryColor" Color="#718096" />
+        <SolidColorBrush x:Key="BorderColor" Color="#E2E8F0" />
+        <SolidColorBrush x:Key="SidebarColor" Color="#F7FAFC" /> <!-- Light Gray Sidebar -->
+        <SolidColorBrush x:Key="SidebarTextColor" Color="#4A5568" />
+        <SolidColorBrush x:Key="SidebarActiveColor" Color="#EA580C" />
+        <SolidColorBrush x:Key="CardBackground" Color="White" />
+        <SolidColorBrush x:Key="InputBackground" Color="#F7FAFC" />
         
-        <!-- Button Style -->
+        <!-- Professional Button Style -->
         <Style x:Key="ActionButton" TargetType="Button">
             <Setter Property="Background" Value="{StaticResource PrimaryColor}" />
             <Setter Property="Foreground" Value="White" />
             <Setter Property="Padding" Value="16,10" />
-            <Setter Property="Margin" Value="5" />
+            <Setter Property="Margin" Value="0" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" 
-                                BorderBrush="{TemplateBinding BorderBrush}" 
-                                BorderThickness="{TemplateBinding BorderThickness}" 
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="4">
-                            <Border.Effect>
-                                <DropShadowEffect ShadowDepth="1" BlurRadius="5" Opacity="0.3" Direction="270" />
-                            </Border.Effect>
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="{StaticResource SecondaryColor}" />
+                                <Setter Property="Background" Value="{StaticResource AccentColor}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="{StaticResource AccentColor}" />
+                                <Setter Property="Background" Value="#B91C1C" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.6" />
@@ -64,77 +70,138 @@
             </Setter>
         </Style>
         
-        <!-- TextBox Style -->
+        <!-- Professional TextBox Style -->
         <Style x:Key="FormTextBox" TargetType="TextBox">
-            <Setter Property="Padding" Value="12,8" />
-            <Setter Property="Margin" Value="0,5,0,15" />
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="Margin" Value="0,4,0,16" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderColor}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="Background" Value="{StaticResource InputBackground}" />
+            <Setter Property="Foreground" Value="{StaticResource TextColor}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False" Padding="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="{StaticResource PrimaryColor}" />
+                                <Setter Property="Background" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="BorderBrush" Value="{StaticResource TextSecondaryColor}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Enhanced ComboBox Style -->
+        <Style x:Key="FormComboBox" TargetType="ComboBox">
+            <Setter Property="Padding" Value="14,10" />
+            <Setter Property="Margin" Value="0,5,0,15" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderColor}" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Height" Value="42" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
                         <Grid>
-                            <Border Background="{TemplateBinding Background}" 
-                                    BorderBrush="{TemplateBinding BorderBrush}" 
-                                    BorderThickness="{TemplateBinding BorderThickness}" 
-                                    CornerRadius="4">
-                                <ScrollViewer x:Name="PART_ContentHost" Focusable="False" Padding="{TemplateBinding Padding}" />
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="8">
+                                <Border.Effect>
+                                    <DropShadowEffect ShadowDepth="1" BlurRadius="3" Opacity="0.1" Direction="270" />
+                                </Border.Effect>
+                                <Grid>
+                                    <ToggleButton x:Name="ToggleButton" Background="Transparent" BorderThickness="0"
+                                                  IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                                  ClickMode="Press" Focusable="False" />
+                                    <ContentPresenter x:Name="ContentSite" IsHitTestVisible="False"
+                                                      Content="{TemplateBinding SelectionBoxItem}"
+                                                      ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                      ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                      Margin="{TemplateBinding Padding}"
+                                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
+                                    <Path x:Name="Arrow" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                          Data="M 0 0 L 4 4 L 8 0 Z" Fill="{StaticResource TextSecondaryColor}" Margin="0,0,15,0" />
+                                </Grid>
                             </Border>
+                            <Popup x:Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
+                                <Grid MaxHeight="{TemplateBinding MaxDropDownHeight}" MinWidth="{TemplateBinding ActualWidth}">
+                                    <Border Background="White" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="4">
+                                        <Border.Effect>
+                                            <DropShadowEffect ShadowDepth="1" BlurRadius="4" Opacity="0.1" Direction="270" />
+                                        </Border.Effect>
+                                        <ScrollViewer>
+                                            <StackPanel IsItemsHost="True" />
+                                        </ScrollViewer>
+                                    </Border>
+                                </Grid>
+                            </Popup>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsFocused" Value="True">
                                 <Setter Property="BorderBrush" Value="{StaticResource PrimaryColor}" />
                             </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="BorderBrush" Value="{StaticResource SecondaryColor}" />
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
         
-        <!-- ComboBox Style -->
-        <Style x:Key="FormComboBox" TargetType="ComboBox">
-            <Setter Property="Padding" Value="10,5" />
-            <Setter Property="Margin" Value="0,5,0,15" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderColor}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="Height" Value="35" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-        </Style>
-        
-        <!-- Sidebar Button Style -->
+        <!-- Professional Sidebar Button Style -->
         <Style x:Key="SidebarButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Foreground" Value="{StaticResource SidebarTextColor}" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Height" Value="60" />
+            <Setter Property="Height" Value="48" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Margin" Value="8,2" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" Padding="10">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                <ContentPresenter Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center" Content="{TemplateBinding Content}" />
-                                <TextBlock Grid.Row="1" Text="{TemplateBinding Tag}" HorizontalAlignment="Center" VerticalAlignment="Center" 
-                                           Foreground="{TemplateBinding Foreground}" FontSize="10" Margin="0,5,0,0"/>
-                            </Grid>
+                        <Border Background="{TemplateBinding Background}" Padding="12,8" CornerRadius="6" Margin="{TemplateBinding Margin}">
+                            <StackPanel Orientation="Horizontal">
+                                <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                <TextBlock Text="{TemplateBinding Tag}" VerticalAlignment="Center"
+                                           Foreground="{TemplateBinding Foreground}" FontSize="14" FontWeight="Normal"/>
+                            </StackPanel>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#40FFFFFF" />
+                                <Setter Property="Background" Value="#EDF2F7" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#60FFFFFF" />
+                                <Setter Property="Background" Value="#E2E8F0" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <!-- Active Sidebar Button Style -->
+        <Style x:Key="SidebarButtonActive" TargetType="Button" BasedOn="{StaticResource SidebarButton}">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="{StaticResource SidebarActiveColor}" />
         </Style>
     </Window.Resources>
     
@@ -142,50 +209,50 @@
         <StaticResource ResourceKey="MainViewModel" />
     </Window.DataContext>
     
-    <Border CornerRadius="8" BorderThickness="1" BorderBrush="{StaticResource BorderColor}" Background="White">
+    <Border CornerRadius="8" BorderThickness="1" BorderBrush="{StaticResource BorderColor}" Background="{StaticResource CardBackground}">
         <Border.Effect>
-            <DropShadowEffect BlurRadius="10" ShadowDepth="2" Direction="270" Opacity="0.2" />
+            <DropShadowEffect BlurRadius="10" ShadowDepth="2" Direction="270" Opacity="0.1" />
         </Border.Effect>
         
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="80" />
+                <ColumnDefinition Width="144" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            
-            <!-- Sidebar -->
-            <Border Grid.Column="0" Background="{StaticResource SidebarColor}" CornerRadius="8,0,0,8">
-                <StackPanel>
-                    <!-- Logo -->
-                    <Button Height="80" Background="Transparent" BorderThickness="0">
-                        <TextBlock Text="OA" Foreground="White" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" />
-                    </Button>
+
+            <!-- Professional Sidebar -->
+            <Border Grid.Column="0" Background="{StaticResource SidebarColor}" CornerRadius="8,0,0,8" BorderThickness="0,0,1,0" BorderBrush="{StaticResource BorderColor}">
+                <StackPanel Margin="0,20,0,0">
+                    <!-- Professional App Title Header -->
+                    <StackPanel Margin="16,0,16,24">
+                        <!-- App Logo and Title -->
+                        <StackPanel Margin="0,0,0,12" HorizontalAlignment="Center">
+                            <Border Background="{StaticResource PrimaryColor}" CornerRadius="8" Width="32" Height="32" Margin="0,0,0,8">
+                                <TextBlock Text="OA" Foreground="White" FontSize="14" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Segoe UI" />
+                            </Border>
+                            <TextBlock TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" LineHeight="16">
+                                <Run Text="OpenAutomate" Foreground="{StaticResource PrimaryColor}" FontSize="14" FontWeight="SemiBold" FontFamily="Segoe UI" />
+                                <LineBreak />
+                                <Run Text="Agent" Foreground="{StaticResource PrimaryColor}" FontSize="14" FontWeight="SemiBold" FontFamily="Segoe UI" />
+                            </TextBlock>
+                        </StackPanel>
+                    </StackPanel>
                     
-                    <!-- Navigation Buttons -->
-                    <Button Style="{StaticResource SidebarButton}" IsEnabled="False">
-                        <Path Width="24" Height="24" Fill="White" Stretch="Uniform" Data="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z" />
-                        <Button.Tag>Home</Button.Tag>
-                    </Button>
-                    
-                    <Button Style="{StaticResource SidebarButton}" Background="#40FFFFFF">
-                        <Path Width="24" Height="24" Fill="White" Stretch="Uniform" Data="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" />
-                        <Button.Tag>Settings</Button.Tag>
-                    </Button>
-                    
-                    <Button Style="{StaticResource SidebarButton}" IsEnabled="False">
-                        <Path Width="24" Height="24" Fill="White" Stretch="Uniform" Data="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" />
-                        <Button.Tag>Execute</Button.Tag>
-                    </Button>
-                    
-                    <Button Style="{StaticResource SidebarButton}" IsEnabled="False">
-                        <Path Width="24" Height="24" Fill="White" Stretch="Uniform" Data="M13,9H18.5L13,3.5V9M6,2H14L20,8V20A2,2 0 0,1 18,22H6C4.89,22 4,21.1 4,20V4C4,2.89 4.89,2 6,2M15,18V16H6V18H15M18,14V12H6V14H18Z" />
-                        <Button.Tag>Logs</Button.Tag>
-                    </Button>
-                    
-                    <Button Style="{StaticResource SidebarButton}" IsEnabled="False">
-                        <Path Width="24" Height="24" Fill="White" Stretch="Uniform" Data="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z" />
-                        <Button.Tag>About</Button.Tag>
-                    </Button>
+                    <!-- Navigation Menu -->
+                    <StackPanel Margin="8,0">
+                        <Button Style="{StaticResource SidebarButtonActive}" x:Name="SettingsTabButton" Click="SettingsTabButton_Click">
+                            <Path Width="16" Height="16" Fill="{StaticResource SidebarActiveColor}" Stretch="Uniform"
+                                  Data="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" />
+                            <Button.Tag>Settings</Button.Tag>
+                        </Button>
+
+                        <Button Style="{StaticResource SidebarButton}" x:Name="LogsTabButton" Click="LogsTabButton_Click">
+                            <Path Width="16" Height="16" Fill="{StaticResource SidebarTextColor}" Stretch="Uniform"
+                                  Data="M13,9H18.5L13,3.5V9M6,2H14L20,8V20A2,2 0 0,1 18,22H6C4.89,22 4,21.1 4,20V4C4,2.89 4.89,2 6,2M15,18V16H6V18H15M18,14V12H6V14H18Z" />
+                            <Button.Tag>Logs</Button.Tag>
+                        </Button>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             
@@ -196,18 +263,47 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <!-- Title Bar -->
-                <Border Grid.Row="0" Background="White" Padding="20,15" MouseLeftButtonDown="DragWindow">
+                <!-- Professional Title Bar -->
+                <Border Grid.Row="0" Background="{StaticResource CardBackground}" Padding="24,16" MouseLeftButtonDown="DragWindow"
+                        BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderColor}">
                     <Grid>
-                        <TextBlock Text="Bot Agent Settings" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource TextColor}" VerticalAlignment="Center" />
-                        
+                        <TextBlock x:Name="TabTitle" Text="Settings" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource TextColor}"
+                                   VerticalAlignment="Center" FontFamily="Segoe UI" />
+
                         <!-- Window Controls -->
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button x:Name="MinimizeButton" Width="30" Height="30" Background="Transparent" BorderThickness="0" Click="MinimizeWindow">
-                                <Path Data="M20,14H4V10H20" Fill="{StaticResource TextColor}" Width="12" Height="12" Stretch="Uniform" />
+                            <Button x:Name="MinimizeButton" Width="32" Height="32" Background="Transparent" BorderThickness="0"
+                                    Click="MinimizeWindow" Margin="4,0">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{StaticResource InputBackground}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                                <Path Data="M20,14H4V10H20" Fill="{StaticResource TextSecondaryColor}" Width="12" Height="12" Stretch="Uniform" />
                             </Button>
-                            <Button x:Name="CloseButton" Width="30" Height="30" Background="Transparent" BorderThickness="0" Click="CloseWindow">
-                                <Path Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" Fill="{StaticResource TextColor}" Width="12" Height="12" Stretch="Uniform" />
+                            <Button x:Name="CloseButton" Width="32" Height="32" Background="Transparent" BorderThickness="0"
+                                    Click="CloseWindow" Margin="4,0">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="#FED7AA" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                                <Path Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
+                                      Fill="{StaticResource TextSecondaryColor}" Width="12" Height="12" Stretch="Uniform" />
                             </Button>
                         </StackPanel>
                     </Grid>
@@ -220,129 +316,161 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     
-                    <!-- Configuration Form -->
-                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,10,0,0">
-                        <StackPanel Margin="40,10,40,20">
-                            <!-- Configuration Section Header -->
-                            <Border BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderColor}" Margin="0,0,0,20">
-                                <TextBlock Text="CONNECTION SETTINGS" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource PrimaryColor}" Margin="0,0,0,10" />
-                            </Border>
-                            
+                    <!-- Tab Content Area -->
+                    <Grid Grid.Row="0">
+                        <!-- Settings Tab -->
+                        <StackPanel x:Name="SettingsTabContent" Margin="24,24,24,24" VerticalAlignment="Top">
                             <!-- Machine Name -->
-                            <StackPanel Margin="0,0,0,5">
-                                <TextBlock Text="Machine Name" FontWeight="SemiBold" Foreground="{StaticResource TextColor}" />
-                                <TextBlock Text="*" Foreground="{StaticResource PrimaryColor}" FontWeight="SemiBold" Margin="0,0,0,5">
-                                    <TextBlock.RenderTransform>
-                                        <TranslateTransform X="-5" Y="0" />
-                                    </TextBlock.RenderTransform>
-                                </TextBlock>
-                                <TextBox Style="{StaticResource FormTextBox}" Text="{Binding Config.MachineName, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5" />
+                            <StackPanel Margin="0,0,0,20">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="Machine Name" FontWeight="Medium" Foreground="{StaticResource TextColor}" FontSize="14" FontFamily="Segoe UI" />
+                                    <TextBlock Text=" *" Foreground="{StaticResource PrimaryColor}" FontWeight="SemiBold" />
+                                </StackPanel>
+                                <controls:CopyableTextBox Text="{Binding Config.MachineName}" Margin="0,4,0,16" />
                             </StackPanel>
-                            
+
                             <!-- Agent Key -->
-                            <StackPanel Margin="0,0,0,5">
-                                <TextBlock Text="Agent Key" FontWeight="SemiBold" Foreground="{StaticResource TextColor}" />
-                                <TextBlock Text="*" Foreground="{StaticResource PrimaryColor}" FontWeight="SemiBold" Margin="0,0,0,5">
-                                    <TextBlock.RenderTransform>
-                                        <TranslateTransform X="-5" Y="0" />
-                                    </TextBlock.RenderTransform>
-                                </TextBlock>
-                                <TextBox Style="{StaticResource FormTextBox}" Text="{Binding Config.MachineKey, UpdateSourceTrigger=PropertyChanged}" />
+                            <StackPanel Margin="0,0,0,20">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="Agent Key" FontWeight="Medium" Foreground="{StaticResource TextColor}" FontSize="14" FontFamily="Segoe UI" />
+                                    <TextBlock Text=" *" Foreground="{StaticResource PrimaryColor}" FontWeight="SemiBold" />
+                                </StackPanel>
+                                <controls:CredentialTextBox Value="{Binding Config.MachineKey, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,16" />
                             </StackPanel>
-                            
+
                             <!-- Center URL -->
-                            <StackPanel Margin="0,0,0,5">
-                                <TextBlock Text="Center URL" FontWeight="SemiBold" Foreground="{StaticResource TextColor}" />
-                                <TextBlock Text="*" Foreground="{StaticResource PrimaryColor}" FontWeight="SemiBold" Margin="0,0,0,5">
-                                    <TextBlock.RenderTransform>
-                                        <TranslateTransform X="-5" Y="0" />
-                                    </TextBlock.RenderTransform>
-                                </TextBlock>
+                            <StackPanel Margin="0,0,0,20">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="Center URL" FontWeight="Medium" Foreground="{StaticResource TextColor}" FontSize="14" FontFamily="Segoe UI" />
+                                    <TextBlock Text=" *" Foreground="{StaticResource PrimaryColor}" FontWeight="SemiBold" />
+                                </StackPanel>
                                 <TextBox Style="{StaticResource FormTextBox}" Text="{Binding Config.ServerUrl, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
-                            
-                            <!-- Connection Status and Buttons -->
-                            <Border Background="#F5F5F5" CornerRadius="4" Padding="15" Margin="0,5,0,20">
-                                <Grid>
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <StackPanel Orientation="Horizontal" Visibility="{Binding IsConnected, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                            <Ellipse Width="16" Height="16" Fill="Green" Margin="0,0,8,0" />
-                                            <TextBlock Text="Connected" Foreground="Green" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                        </StackPanel>
-                                        
-                                        <StackPanel Orientation="Horizontal" Visibility="{Binding IsConnected, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-                                            <Ellipse Width="16" Height="16" Fill="#757575" Margin="0,0,8,0" />
-                                            <TextBlock Text="Disconnected" Foreground="#757575" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                        </StackPanel>
+
+
+                            <!-- Connection Status and Button -->
+                            <Grid Margin="0,8,0,0">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" Visibility="{Binding IsConnected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <Path Width="16" Height="16" Fill="#22C55E" Stretch="Uniform" Margin="0,0,8,0"
+                                              Data="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M11,16.5L18,9.5L16.5,8L11,13.5L7.5,10L6,11.5L11,16.5Z" />
+                                        <TextBlock Text="Connected" Foreground="#22C55E" FontWeight="Medium" FontSize="14" VerticalAlignment="Center" FontFamily="Segoe UI" />
                                     </StackPanel>
-                                    
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                        <!-- Connect Button -->
-                                        <Button Style="{StaticResource ActionButton}" 
-                                                Content="Connect" 
-                                                Padding="20,8"
-                                                Command="{Binding ConnectCommand}"
-                                                Visibility="{Binding IsConnected, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
-                                        
-                                        <!-- Disconnect Button -->
-                                        <Button Style="{StaticResource ActionButton}" 
-                                                Content="Disconnect" 
-                                                Background="#D32F2F"
-                                                Padding="20,8"
-                                                Command="{Binding DisconnectCommand}"
-                                                Visibility="{Binding IsConnected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                                    <StackPanel Orientation="Horizontal" Visibility="{Binding IsConnected, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                        <Path Width="16" Height="16" Fill="{StaticResource PrimaryColor}" Stretch="Uniform" Margin="0,0,8,0"
+                                              Data="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,7A5,5 0 0,0 7,12A5,5 0 0,0 12,17A5,5 0 0,0 17,12A5,5 0 0,0 12,7Z" />
+                                        <TextBlock Text="Disconnected" Foreground="{StaticResource PrimaryColor}" FontWeight="Medium" FontSize="14" VerticalAlignment="Center" FontFamily="Segoe UI" />
                                     </StackPanel>
-                                </Grid>
-                            </Border>
-                            
-                            <!-- Additional Settings Section Header -->
-                            <Border BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderColor}" Margin="0,0,0,20">
-                                <TextBlock Text="ADDITIONAL SETTINGS" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource PrimaryColor}" Margin="0,0,0,10" />
-                            </Border>
-                            
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <!-- Connect Button -->
+                                    <Button Style="{StaticResource ActionButton}"
+                                            Content="Connect"
+                                            Command="{Binding ConnectCommand}"
+                                            Visibility="{Binding IsConnected, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+
+                                    <!-- Disconnect Button -->
+                                    <Button Style="{StaticResource ActionButton}"
+                                            Content="Disconnect"
+                                            Background="#DC2626"
+                                            Command="{Binding DisconnectCommand}"
+                                            Visibility="{Binding IsConnected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Logs Tab Content -->
+                        <StackPanel x:Name="LogsTabContent" Margin="24,24,24,24" VerticalAlignment="Top" Visibility="Collapsed">
                             <!-- Logging Level -->
-                            <StackPanel Margin="0,0,0,5">
-                                <TextBlock Text="Logging Level" FontWeight="SemiBold" Foreground="{StaticResource TextColor}" />
-                                <ComboBox Style="{StaticResource FormComboBox}" 
+                            <StackPanel Margin="0,0,0,20">
+                                <TextBlock Text="Logging Level" FontWeight="Medium" Foreground="{StaticResource TextColor}" FontSize="14" FontFamily="Segoe UI" Margin="0,0,0,6" />
+                                <ComboBox Style="{StaticResource FormComboBox}"
                                           SelectedValue="{Binding Config.LoggingLevel}"
-                                          SelectedValuePath="Content"
-                                          Margin="0,5,0,15">
+                                          SelectedValuePath="Content">
                                     <ComboBoxItem Content="DEBUG" />
                                     <ComboBoxItem Content="INFO" />
                                     <ComboBoxItem Content="WARNING" />
                                     <ComboBoxItem Content="ERROR" />
                                 </ComboBox>
                             </StackPanel>
+
+                            <!-- Log Display Area -->
+                            <StackPanel Margin="0,0,0,20">
+                                <TextBlock Text="Recent Logs" FontWeight="Medium" Foreground="{StaticResource TextColor}" FontSize="14" FontFamily="Segoe UI" Margin="0,0,0,6" />
+                                <Border Background="{StaticResource InputBackground}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="4" Height="200">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Padding="12">
+                                        <TextBlock Text="Log entries will appear here..." Foreground="{StaticResource TextSecondaryColor}" FontFamily="Consolas" FontSize="12" />
+                                    </ScrollViewer>
+                                </Border>
+                            </StackPanel>
                         </StackPanel>
-                    </ScrollViewer>
+                    </Grid>
                     
-                    <!-- Footer -->
-                    <Border Grid.Row="1" Background="#F9F9F9" Padding="40,15" BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderColor}">
-    <Grid>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                                <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource TextColor}" VerticalAlignment="Center" />
-                            </StackPanel>
-                            
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                <Button Style="{StaticResource ActionButton}" 
-                                        Content="Save Settings" 
-                                        MinWidth="120"
-                                        Command="{Binding SaveCommand}" />
-                            </StackPanel>
-                        </Grid>
+                    <!-- Professional Footer -->
+                    <Border Grid.Row="1" Background="{StaticResource CardBackground}" Padding="24,16" BorderThickness="0,1,0,0"
+                            BorderBrush="{StaticResource BorderColor}">
+                        <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource TextSecondaryColor}"
+                                   FontSize="13" VerticalAlignment="Center" FontFamily="Segoe UI" />
                     </Border>
                 </Grid>
             </Grid>
             
-            <!-- Busy Indicator -->
+            <!-- Enhanced Busy Indicator -->
             <Grid Grid.ColumnSpan="2" Background="#80000000" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <Border Background="White" CornerRadius="8" Padding="30,20" Width="300" Height="130">
+                <Border Background="{StaticResource CardBackground}" CornerRadius="12" Padding="30,25" Width="280" Height="140"
+                        HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Border.Effect>
-                        <DropShadowEffect ShadowDepth="2" BlurRadius="15" Opacity="0.2" Direction="270" />
+                        <DropShadowEffect ShadowDepth="3" BlurRadius="15" Opacity="0.25" Direction="270" />
                     </Border.Effect>
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                        <TextBlock Text="Please wait..." Foreground="{StaticResource TextColor}" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,15" HorizontalAlignment="Center" />
-                        <ProgressBar IsIndeterminate="True" Width="240" Height="4" />
+                        <!-- Spinning Icon -->
+                        <Border Background="{StaticResource PrimaryColor}" CornerRadius="20" Width="40" Height="40" Margin="0,0,0,16">
+                            <TextBlock Text="⟳" Foreground="White" FontSize="20" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock.RenderTransform>
+                                    <RotateTransform x:Name="SpinTransform" CenterX="10" CenterY="10" />
+                                </TextBlock.RenderTransform>
+                                <TextBlock.Triggers>
+                                    <EventTrigger RoutedEvent="Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard RepeatBehavior="Forever">
+                                                <DoubleAnimation Storyboard.TargetName="SpinTransform"
+                                                                 Storyboard.TargetProperty="Angle"
+                                                                 From="0" To="360" Duration="0:0:1.5" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </TextBlock.Triggers>
+                            </TextBlock>
+                        </Border>
+
+                        <!-- Loading Text -->
+                        <TextBlock Text="Please wait..." Foreground="{StaticResource TextColor}" FontWeight="SemiBold"
+                                   FontSize="14" Margin="0,0,0,12" HorizontalAlignment="Center" />
+
+                        <!-- Progress Bar -->
+                        <ProgressBar IsIndeterminate="True" Width="220" Height="4" Background="{StaticResource InputBackground}"
+                                     BorderThickness="0">
+                            <ProgressBar.Template>
+                                <ControlTemplate TargetType="ProgressBar">
+                                    <Border Background="{TemplateBinding Background}" CornerRadius="2">
+                                        <Grid>
+                                            <Border Name="PART_Track" Background="{TemplateBinding Background}" CornerRadius="2" />
+                                            <Border Name="PART_Indicator" Background="{TemplateBinding Foreground}"
+                                                    HorizontalAlignment="Left" CornerRadius="2" />
+                                        </Grid>
+                                    </Border>
+                                </ControlTemplate>
+                            </ProgressBar.Template>
+                            <ProgressBar.Foreground>
+                                <LinearGradientBrush>
+                                    <GradientStop Color="#EA580C" Offset="0" />
+                                    <GradientStop Color="#FB923C" Offset="1" />
+                                </LinearGradientBrush>
+                            </ProgressBar.Foreground>
+                        </ProgressBar>
                     </StackPanel>
                 </Border>
             </Grid>

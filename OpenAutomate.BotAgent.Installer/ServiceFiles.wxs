@@ -185,7 +185,23 @@
     </Fragment>
     <Fragment>
         <DirectoryRef Id="dir73D925AE8D269EFA5D58CC0C77DF1660">
-            <Directory Id="dirE15D6DE9AE68311752E92BAD37BB645F" Name="runtimes" />
+            <Directory Id="dirE15D6DE9AE68311752E92BAD37BB645F" Name="runtimes">
+                <Directory Id="dirRuntimesWin" Name="win">
+                    <Directory Id="dirRuntimesWinLib" Name="lib">
+                        <Directory Id="dirRuntimesWinLibNet80" Name="net8.0" />
+                    </Directory>
+                </Directory>
+            </Directory>
         </DirectoryRef>
+    </Fragment>
+    <Fragment>
+        <ComponentGroup Id="ServiceRuntimeComponents">
+            <Component Id="cmpRuntimeServiceController" Directory="dirRuntimesWinLibNet80" Guid="{F1E2D3C4-B5A6-4978-8C9D-0E1F2A3B4C5D}">
+                <File Id="filRuntimeServiceController" KeyPath="yes" Source="$(var.ServiceOutputDir)\runtimes\win\lib\net8.0\System.ServiceProcess.ServiceController.dll" />
+            </Component>
+            <Component Id="cmpRuntimeEventLog" Directory="dirRuntimesWinLibNet80" Guid="{A2B3C4D5-E6F7-4089-9A0B-1C2D3E4F5A6B}">
+                <File Id="filRuntimeEventLog" KeyPath="yes" Source="$(var.ServiceOutputDir)\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.dll" />
+            </Component>
+        </ComponentGroup>
     </Fragment>
 </Wix>

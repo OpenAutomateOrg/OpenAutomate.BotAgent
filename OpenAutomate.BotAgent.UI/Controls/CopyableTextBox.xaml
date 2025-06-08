@@ -1,0 +1,91 @@
+<UserControl x:Class="OpenAutomate.BotAgent.UI.Controls.CopyableTextBox"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignHeight="42" d:DesignWidth="400">
+    
+    <UserControl.Resources>
+        <!-- Professional Orange Color Palette -->
+        <SolidColorBrush x:Key="PrimaryColor" Color="#EA580C" />
+        <SolidColorBrush x:Key="BorderColor" Color="#E2E8F0" />
+        <SolidColorBrush x:Key="TextColor" Color="#2D3748" />
+        <SolidColorBrush x:Key="TextSecondaryColor" Color="#718096" />
+        <SolidColorBrush x:Key="InputBackground" Color="#F7FAFC" />
+        
+        <!-- Copyable TextBox Style -->
+        <Style x:Key="CopyableTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Padding" Value="12,10,40,10" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderColor}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="Background" Value="{StaticResource InputBackground}" />
+            <Setter Property="Foreground" Value="{StaticResource TextColor}" />
+            <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False" Padding="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="BorderBrush" Value="{StaticResource TextSecondaryColor}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Copy Icon Button Style -->
+        <Style x:Key="CopyButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="2">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#F1F5F9" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    
+    <Grid>
+        <!-- Main TextBox -->
+        <TextBox x:Name="MainTextBox" 
+                 Style="{StaticResource CopyableTextBoxStyle}"
+                 Text="{Binding Text, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+        
+        <!-- Copy Icon Button -->
+        <Button x:Name="CopyButton" 
+                Style="{StaticResource CopyButtonStyle}"
+                HorizontalAlignment="Right" 
+                VerticalAlignment="Center"
+                Margin="0,0,8,0"
+                Click="CopyButton_Click"
+                ToolTip="Copy to clipboard">
+            <!-- Copy Icon -->
+            <Path Width="16" Height="16" 
+                  Fill="{StaticResource TextSecondaryColor}" 
+                  Stretch="Uniform"
+                  Data="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
+        </Button>
+    </Grid>
+</UserControl>
