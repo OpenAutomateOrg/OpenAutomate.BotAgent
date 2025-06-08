@@ -51,6 +51,52 @@ public partial class MainWindow : Window
         LoggingService.Information("Window close requested by user");
         this.Close();
     }
+
+    /// <summary>
+    /// Switch to Settings tab
+    /// </summary>
+    private void SettingsTabButton_Click(object sender, RoutedEventArgs e)
+    {
+        LoggingService.Debug("Switching to Settings tab");
+        ShowSettingsTab();
+    }
+
+    /// <summary>
+    /// Switch to Logs tab
+    /// </summary>
+    private void LogsTabButton_Click(object sender, RoutedEventArgs e)
+    {
+        LoggingService.Debug("Switching to Logs tab");
+        ShowLogsTab();
+    }
+
+    /// <summary>
+    /// Show the Settings tab
+    /// </summary>
+    private void ShowSettingsTab()
+    {
+        SettingsTabContent.Visibility = Visibility.Visible;
+        LogsTabContent.Visibility = Visibility.Collapsed;
+        TabTitle.Text = "Settings";
+
+        // Update button styles
+        SettingsTabButton.Style = (Style)FindResource("SidebarButtonActive");
+        LogsTabButton.Style = (Style)FindResource("SidebarButton");
+    }
+
+    /// <summary>
+    /// Show the Logs tab
+    /// </summary>
+    private void ShowLogsTab()
+    {
+        SettingsTabContent.Visibility = Visibility.Collapsed;
+        LogsTabContent.Visibility = Visibility.Visible;
+        TabTitle.Text = "Logs";
+
+        // Update button styles
+        SettingsTabButton.Style = (Style)FindResource("SidebarButton");
+        LogsTabButton.Style = (Style)FindResource("SidebarButtonActive");
+    }
     
     /// <summary>
     /// Handle window closing to dispose of resources

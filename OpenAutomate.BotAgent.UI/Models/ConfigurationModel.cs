@@ -43,7 +43,30 @@ namespace OpenAutomate.BotAgent.UI.Models
                 {
                     _machineKey = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(MaskedMachineKey));
                 }
+            }
+        }
+
+        /// <summary>
+        /// Masked version of the machine key for display purposes
+        /// </summary>
+        public string MaskedMachineKey
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_machineKey))
+                    return string.Empty;
+
+                if (_machineKey.Length <= 8)
+                    return new string('*', _machineKey.Length);
+
+                // Show first 6 characters, then asterisks, then last 6 characters
+                var start = _machineKey.Substring(0, 6);
+                var end = _machineKey.Substring(_machineKey.Length - 6);
+                var middle = new string('*', Math.Max(4, _machineKey.Length - 12));
+
+                return $"{start}{middle}{end}";
             }
         }
 
