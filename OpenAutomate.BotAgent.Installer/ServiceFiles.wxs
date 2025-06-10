@@ -166,6 +166,10 @@
             <Component Id="cmpCD0EBE0B6C1A4BEBBA33294F8438CC8F" Directory="dir73D925AE8D269EFA5D58CC0C77DF1660" Guid="{7B13E32F-5EC4-4554-84F5-B15CAC6237C0}">
                 <File Id="fil3324C7A28B7B9F2804E11C2958A82CE1" KeyPath="yes" Source="$(var.ServiceOutputDir)\System.ServiceProcess.ServiceController.dll" />
             </Component>
+            <!-- Add Executor DLL to Service folder so Service can load it -->
+            <Component Id="cmpServiceExecutorDll" Directory="dir73D925AE8D269EFA5D58CC0C77DF1660" Guid="{E1F2A3B4-C5D6-4789-90AB-CDEF12345678}">
+                <File Id="filServiceExecutorDll" KeyPath="yes" Source="$(var.ServiceOutputDir)\OpenAutomate.BotAgent.Executor.dll" />
+            </Component>
         </ComponentGroup>
     </Fragment>
     <Fragment>
