@@ -1,0 +1,49 @@
+name: SonarQube Analysis
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [develop]
+
+env:
+  SONAR_PROJECT_KEY: openautomate-botagent
+  SONAR_PROJECT_NAME: openautomate-botagent
+  SONAR_HOST_URL: http://sonar.openautomate.me
+
+jobs:
+  sonar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install SonarScanner
+        run: dotnet tool install --global dotnet-sonarscanner
+
+      - name: Begin SonarQube analysis
+        run: |
+          dotnet sonarscanner begin \
+            /k:"$SONAR_PROJECT_KEY" \
+            /n:"$SONAR_PROJECT_NAME" \
+            /d:sonar.host.url="$SONAR_HOST_URL" \
+            /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
+            /d:sonar.issue.ignore.multicriteria=roslyn1 \
+            /d:sonar.issue.ignore.multicriteria.roslyn1.ruleKey=external_roslyn:* \
+            /d:sonar.issue.ignore.multicriteria.roslyn1.resourceKey=*
+
+      - name: Restore and build cross-platform projects
+        run: |
+          dotnet restore OpenAutomate.BotAgent.Service/OpenAutomate.BotAgent.Service.csproj
+          dotnet restore OpenAutomate.BotAgent.Executor/OpenAutomate.BotAgent.Executor.csproj
+          dotnet build OpenAutomate.BotAgent.Service/OpenAutomate.BotAgent.Service.csproj --no-restore
+          dotnet build OpenAutomate.BotAgent.Executor/OpenAutomate.BotAgent.Executor.csproj --no-restore
+
+      - name: End SonarQube analysis
+        run: dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

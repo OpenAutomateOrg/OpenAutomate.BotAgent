@@ -1,0 +1,235 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Fragment>
+        <DirectoryRef Id="SERVICEFOLDER">
+            <Component Id="cmp2476EF8FA82D9BE393E026472F684A85" Guid="{CB86AF81-6CB4-4843-9467-8EB61822EE38}">
+                <File Id="fil8825A3F9B778F1C126D4D81963027AE7" KeyPath="yes" Source="SourceDir\appsettings.Development.json" />
+            </Component>
+            <Component Id="cmpE25104C7C285D1CEF209B01C68EC0DE9" Guid="{07C9B00A-A688-4C01-8336-AA5353DE92E1}">
+                <File Id="filE5A395F0A76BDE8DEA226C1144C5EB6E" KeyPath="yes" Source="SourceDir\appsettings.json" />
+            </Component>
+            <Component Id="cmp969854FA455708B7800314D233D3A4F8" Guid="{F730CEE5-96AF-4560-9CF9-772137D1D1F5}">
+                <File Id="filA7BF75FA88754F9FE00BE38034C1B877" KeyPath="yes" Source="SourceDir\Microsoft.AspNetCore.Connections.Abstractions.dll" />
+            </Component>
+            <Component Id="cmpF8EB11884F6A5AC17EA2F7D1C2F25BE5" Guid="{1CCF2B4D-E780-41E1-A6A2-A147543664F5}">
+                <File Id="filD0716915ACDAE634CF74C34944333789" KeyPath="yes" Source="SourceDir\Microsoft.AspNetCore.Http.Connections.Client.dll" />
+            </Component>
+            <Component Id="cmpBB88B766ADE5468876897F068C3548DB" Guid="{44A3FA14-388D-41B0-B04D-5CEB150527A4}">
+                <File Id="filDDCE57903E4D84FF8737B29BAA149B16" KeyPath="yes" Source="SourceDir\Microsoft.AspNetCore.Http.Connections.Common.dll" />
+            </Component>
+            <Component Id="cmp18922FA5EB881D193CBF686458A17763" Guid="{5E9FA662-CCFC-4410-8C55-96601F74C282}">
+                <File Id="filF7312DB0DC2058868AC00178B81B9AAB" KeyPath="yes" Source="SourceDir\Microsoft.AspNetCore.SignalR.Client.Core.dll" />
+            </Component>
+            <Component Id="cmpE1F091D8EE5FDE2DCFCCFEF15F423B4C" Guid="{55E93A01-7522-4A88-AE77-9AFC7800B6C6}">
+                <File Id="filB812BE45E3B5F1D2040410C15F1DB239" KeyPath="yes" Source="SourceDir\Microsoft.AspNetCore.SignalR.Client.dll" />
+            </Component>
+            <Component Id="cmp73D673123F0C9CD4F1F865097ADB05D1" Guid="{197CEB22-DF29-496F-A2AC-B207666E93A1}">
+                <File Id="fil6F0DEF7767E3010E3A85373DEC00D0C9" KeyPath="yes" Source="SourceDir\Microsoft.AspNetCore.SignalR.Common.dll" />
+            </Component>
+            <Component Id="cmp610170DB11DE0424644A9DF825ECD46D" Guid="{D94BFC23-FB59-4F6F-B6ED-5D2F9600B060}">
+                <File Id="fil04B8EFA384D7F85FA2F7B36E72F5AB87" KeyPath="yes" Source="SourceDir\Microsoft.AspNetCore.SignalR.dll" />
+            </Component>
+            <Component Id="cmpE691F416812BBA2EB7692C785CC86F2D" Guid="{2BFEF6E3-2BB4-44EF-9FC9-0AE8495CA3A4}">
+                <File Id="filA0331C03DC1702590CB56B06F8EB0788" KeyPath="yes" Source="SourceDir\Microsoft.AspNetCore.SignalR.Protocols.Json.dll" />
+            </Component>
+            <Component Id="cmp521E7EA8F9C3D0CE375F45CC7B55912F" Guid="{65C74C76-A928-4234-9357-6359AB03AB9B}">
+                <File Id="fil25B38B0E01DFBBCF4408C9A73D6C8706" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Configuration.Binder.dll" />
+            </Component>
+            <Component Id="cmpDC356C9626472E9EC49BAB502A31BCF8" Guid="{4C5062BE-71ED-4375-8943-12BA66F52353}">
+                <File Id="fil80B719D887B32A4C6AE965ED9964D644" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Configuration.FileExtensions.dll" />
+            </Component>
+            <Component Id="cmp77E0EAC28B6192246204D568434B5F37" Guid="{34110BB8-90BB-4FF9-95B5-0D0D80755D73}">
+                <File Id="filEEEE33809BDD9437867358F5AC94727E" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Configuration.Json.dll" />
+            </Component>
+            <Component Id="cmp7417C7336DE330FEFACD13A11BD1F68A" Guid="{AB776C8E-9FEC-423D-AEB2-BBDB434E4ADF}">
+                <File Id="fil11CAC09E16A4893C27E9DB875E932E4E" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Configuration.UserSecrets.dll" />
+            </Component>
+            <Component Id="cmp78E77709112D9F2B60C411ABDC7E1FA7" Guid="{C129C375-F2FC-415D-827E-E2052932D94A}">
+                <File Id="fil713F5D8D3EE5167F6185CAB6F2F16E0E" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.DependencyInjection.Abstractions.dll" />
+            </Component>
+            <Component Id="cmp09E1D40054A28E784F3F02178CD89806" Guid="{542239A9-B97D-4941-BE80-F7F056BF3F12}">
+                <File Id="fil7D1A185ABA901B0364C1F9DDB10CF272" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.DependencyInjection.dll" />
+            </Component>
+            <Component Id="cmp189756088ABDE63F8F003544E82CB22D" Guid="{91DF724A-DE7D-4472-BEF0-E689D3A77A5E}">
+                <File Id="fil69B022C82A9D7FFED992809D1D09A106" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Diagnostics.Abstractions.dll" />
+            </Component>
+            <Component Id="cmp742FD5E814207D55B90BDF53A20A2755" Guid="{B1E45288-1733-4161-9203-4516AF696D03}">
+                <File Id="fil472142EBFC69D07DB9B306F2E2C4E3B6" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Diagnostics.dll" />
+            </Component>
+            <Component Id="cmp9009AA59104EF7C2E608B19BA2F0717A" Guid="{2B7F21E6-4C77-4BC3-AD4A-2363E15A7E0D}">
+                <File Id="fil0ECC0BBECC13E79C10F97B43F1ACECFE" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Features.dll" />
+            </Component>
+            <Component Id="cmpEE50310DACF861E5BB3B8B84CBB12660" Guid="{F6C33D23-9D31-49DC-98DD-0E4103B8915D}">
+                <File Id="fil66F224A1292D35EDC6A710CC5CAE3789" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Hosting.Abstractions.dll" />
+            </Component>
+            <Component Id="cmp45ECE869161BCCC429713377AE48D889" Guid="{5E6F8E92-C8EF-41F8-8A16-A1264F7122F0}">
+                <File Id="filAB3E55C53D24800FA1BA783EF80FB8A3" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Hosting.dll" />
+            </Component>
+            <Component Id="cmp2EC49880F9F13167744D75632244EB54" Guid="{6987841F-67EF-423E-9410-5E6586FD072C}">
+                <File Id="filC5112F7E61403C8AA471DB4825AFA27B" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Hosting.WindowsServices.dll" />
+            </Component>
+            <Component Id="cmpBA3AAFB1F8B73456E38BFF9140135766" Guid="{B38E3DDF-DA8A-4215-94DF-662B7975C32F}">
+                <File Id="fil6DAF552AB0E6492EC499CF79BCA670D0" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Http.dll" />
+            </Component>
+            <Component Id="cmpE5B5803FA11F9F318F7769C8E590C47D" Guid="{D13BD4AE-C3DA-4AD0-B0EF-0DC601EE77EB}">
+                <File Id="filB5C2386285C79FCB2E8901A880E18B16" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Logging.Abstractions.dll" />
+            </Component>
+            <Component Id="cmp7836CD939A2A160EB8122A2C4B0CA24C" Guid="{7EB354BE-4C98-4E93-ACD8-1E89E6BCAEF0}">
+                <File Id="fil53E59239CA3569A8296DE94CE51A6271" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Logging.Configuration.dll" />
+            </Component>
+            <Component Id="cmp3C5AEA5EE4D7861AD37649657DB602B7" Guid="{CC8ACFBA-AA32-4F17-AF3C-E1DE7C9A916C}">
+                <File Id="fil4A56F785B40CE2615B1FDF7587A51CC7" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Logging.Console.dll" />
+            </Component>
+            <Component Id="cmp1360CBD958AD311640EEFF6EE9BCD3FE" Guid="{91A910B2-BA2D-4CED-8435-F1B1F7A33F9E}">
+                <File Id="fil681967D1FADE937085629EC07538A8C3" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Logging.Debug.dll" />
+            </Component>
+            <Component Id="cmp09516B846B8A3B2D513BDA719BCBE07B" Guid="{30D40B89-E740-475F-A447-1A18E1E2940C}">
+                <File Id="filBAE15BBE764C674EF84EABD978F2C6EB" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Logging.dll" />
+            </Component>
+            <Component Id="cmp6B32ADC44F97E6A3FB2661C2E8EDA103" Guid="{504A4AB1-CB23-4E1F-95BC-CE89FEABE133}">
+                <File Id="fil6CDDEFAD949F6B73392E0367CBE26AC2" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Logging.EventLog.dll" />
+            </Component>
+            <Component Id="cmp08F27AB6C862AA825F3B86A0E964F0A6" Guid="{FA0662B7-FDB3-4DAE-8C64-61209512E900}">
+                <File Id="fil603D0200F98A9ABE63F9C5573482EB31" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Logging.EventSource.dll" />
+            </Component>
+            <Component Id="cmp001633C4F7208C023CF8F5CEC616F78C" Guid="{CF3B7030-C604-4973-B4E9-FB0837E2DAEA}">
+                <File Id="fil2F6181F983B0172DDB0A677090F2E409" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.ObjectPool.dll" />
+            </Component>
+            <Component Id="cmp6B46E2777AFD7C6CFFF4E229EC48FFC8" Guid="{11D66859-59F3-4CAB-86BC-F5B85B002B0D}">
+                <File Id="filCD7F8166032C0F598291FF3DC423F00B" KeyPath="yes" Source="SourceDir\Microsoft.Extensions.Options.dll" />
+            </Component>
+            <Component Id="cmp3F1EC09A8591E7AC8FD3088F332FE525" Guid="{3A11AA19-2ED9-4706-B7AB-2F2C432C4790}">
+                <File Id="fil0AE9EB00DE67AF6B364CEB4A24FF8522" KeyPath="yes" Source="SourceDir\Newtonsoft.Json.dll" />
+            </Component>
+            <Component Id="cmp7E6FC929BEE854C726729F558172B59A" Guid="{B5F413D6-6097-47E2-A70C-BA4ABEEEB983}">
+                <File Id="filF84E5DEF4751D69B3F683D9F2E8126F0" KeyPath="yes" Source="SourceDir\OpenAutomate.BotAgent.Executor.deps.json" />
+            </Component>
+            <Component Id="cmp7B26D128F9B6F142307398E5FB0F81D4" Guid="{D077C566-0F12-44DE-85FD-DBBEA64EB403}">
+                <File Id="fil08F99103F524D86C8C6DCECB06676480" KeyPath="yes" Source="SourceDir\OpenAutomate.BotAgent.Executor.dll" />
+            </Component>
+            <Component Id="cmpAD385895882D3588D97DD54EBB9569A2" Guid="{8721D5C2-B67A-4CAF-AE44-61D8585AD959}">
+                <File Id="fil18FDDFDFD9CC35ECC5853E57D357275A" KeyPath="yes" Source="SourceDir\OpenAutomate.BotAgent.Executor.exe" />
+            </Component>
+            <Component Id="cmp7EBB4F5B6F1791C852AB3F1F4D076777" Guid="{84169F32-8F06-46AC-B97B-11CD0350CB36}">
+                <File Id="fil181ACD4095D58BE8EEA1C81E5A265D15" KeyPath="yes" Source="SourceDir\OpenAutomate.BotAgent.Executor.pdb" />
+            </Component>
+            <Component Id="cmpDABA4C63D9C809B1630D94BDDE878D96" Guid="{522C6FF4-A07A-4987-98D3-C0F0EE50C94F}">
+                <File Id="filD141CCFF6116FCE17A1D4CA79A1C2CD2" KeyPath="yes" Source="SourceDir\OpenAutomate.BotAgent.Executor.runtimeconfig.json" />
+            </Component>
+            <Component Id="cmp9AE30E08D156F87102D9E9A01972682D" Guid="{D387C70E-8418-414E-8AB4-0D604D46003A}">
+                <File Id="fil2D5A92D1F106039F846FFC7943BB1DE7" KeyPath="yes" Source="SourceDir\OpenAutomate.BotAgent.Service.deps.json" />
+            </Component>
+            <Component Id="cmpA0E6744256415F967C67AFC15DDA65C9" Guid="{BD79DBBC-4CC0-4089-A7B1-ABFDEA259376}">
+                <File Id="filAED60982035E75934E2B3E1C2DC0DA12" KeyPath="yes" Source="SourceDir\OpenAutomate.BotAgent.Service.dll" />
+            </Component>
+            <Component Id="cmpE39758906F37112ADA5273A4019240A7" Guid="{CE01112A-B212-4BAA-BD3A-A20F981E99BD}">
+                <File Id="filCB5B254159342BBD3718F6DC14638DD4" KeyPath="yes" Source="SourceDir\OpenAutomate.BotAgent.Service.exe" />
+            </Component>
+            <Component Id="cmp39B3FCF07987A0102D3F2F1900AB1474" Guid="{52570924-703A-45CA-A0A7-1ACC0873E7B8}">
+                <File Id="fil38B1E00A8EDAE8481D559C5C483A4C7A" KeyPath="yes" Source="SourceDir\OpenAutomate.BotAgent.Service.pdb" />
+            </Component>
+            <Component Id="cmp238FE22076D2C3391EBEC2B2A5D05A68" Guid="{424B6A8F-CBCB-4CA1-B6B8-51E0FFFFBE70}">
+                <File Id="filABCA9801B096740FA940AB3EF7C2933C" KeyPath="yes" Source="SourceDir\OpenAutomate.BotAgent.Service.runtimeconfig.json" />
+            </Component>
+            <Component Id="cmp634BF3EB6856267A58CC623E514EA963" Guid="{AFA1EAC2-E19A-4398-8706-113D645B506E}">
+                <File Id="fil82CD650B605F66396801DDD522788B77" KeyPath="yes" Source="SourceDir\Serilog.dll" />
+            </Component>
+            <Component Id="cmp319EBCACE420F8FDF1E72511B708CFDC" Guid="{AF9E2080-2016-4071-9942-2DF7C2205A36}">
+                <File Id="filFF1A905945CD65C25C14DAEAA57F14A0" KeyPath="yes" Source="SourceDir\Serilog.Extensions.Hosting.dll" />
+            </Component>
+            <Component Id="cmp4500806DCD90E8ECD32160512342B7B7" Guid="{70ABD147-4AEC-492B-9A27-0221C29B9E60}">
+                <File Id="filEB661199FFC859F0863110EB04672E59" KeyPath="yes" Source="SourceDir\Serilog.Extensions.Logging.dll" />
+            </Component>
+            <Component Id="cmp0AC79799D6EDFFCDF01E2A1AFB4C1450" Guid="{C463CCBB-4127-4803-91BC-F7CB28972691}">
+                <File Id="fil2522A489AA876D0451D5223B87680BC0" KeyPath="yes" Source="SourceDir\Serilog.Sinks.Console.dll" />
+            </Component>
+            <Component Id="cmp4BF627F27BCEE3B31063063B5F1FDEA4" Guid="{6FFB5EA3-1CE5-4447-968D-27DC7BBB0FE4}">
+                <File Id="fil0E73D9A5D8AF2178EA9F9AF0F3B169F5" KeyPath="yes" Source="SourceDir\Serilog.Sinks.File.dll" />
+            </Component>
+            <Component Id="cmp507D037B997617D6E9A3D4492E97E141" Guid="{3526E2C8-7479-4621-81DF-8399C21A1538}">
+                <File Id="filE07B9C3B63A110979DA407A30796139E" KeyPath="yes" Source="SourceDir\System.Diagnostics.EventLog.dll" />
+            </Component>
+            <Component Id="cmp20AAC748973B2F1879A088C704852C97" Guid="{78E69B98-3D2B-4D8A-8A5B-5FF42F92211E}">
+                <File Id="fil032C05F67203716B211DF91494207DEF" KeyPath="yes" Source="SourceDir\System.Net.WebSockets.WebSocketProtocol.dll" />
+            </Component>
+            <Component Id="cmp77B87A7D5BEBD8750C4BD8D18E0441FD" Guid="{0C0E27F0-7EB4-44DE-8440-6C10F7FCA0DD}">
+                <File Id="fil29802117334AD33E21BE6AF05754D5FF" KeyPath="yes" Source="SourceDir\System.Security.Cryptography.ProtectedData.dll" />
+            </Component>
+            <Component Id="cmp27AF21B3949145F89D7F0104F2942F97" Guid="{4250E754-1384-4F1E-93F7-942AE7544487}">
+                <File Id="fil8D42D4AA2FE94909CA5C42B75655678D" KeyPath="yes" Source="SourceDir\System.ServiceProcess.ServiceController.dll" />
+            </Component>
+            <Directory Id="dir100DEE4F8C2573D40351A61CC36072CA" Name="runtimes">
+                <Directory Id="dirD38B0A59832FF19255DA1FCF5D9F3359" Name="win">
+                    <Directory Id="dirCE0346B2C73FBB9770CD73F08774BB4F" Name="lib">
+                        <Directory Id="dirBB6FA117F77053F043C171ECEC856737" Name="net8.0">
+                            <Component Id="cmpE703DA5D43A9337EFF0F0A0306B225FD" Guid="{48048BA4-E30B-4622-8120-0CBD4258226A}">
+                                <File Id="fil1F31F49A0627C23D94FC983756C229E2" KeyPath="yes" Source="SourceDir\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.dll" />
+                            </Component>
+                            <Component Id="cmpBED76C6F48D3001B07CE8780328D30C4" Guid="{2CAF8D6F-0921-4D5B-A731-601FF32BF7B6}">
+                                <File Id="filD576A15767CD82039243D5C8FE5683B6" KeyPath="yes" Source="SourceDir\runtimes\win\lib\net8.0\System.ServiceProcess.ServiceController.dll" />
+                            </Component>
+                        </Directory>
+                    </Directory>
+                </Directory>
+            </Directory>
+        </DirectoryRef>
+    </Fragment>
+    <Fragment>
+        <ComponentGroup Id="ServiceFiles">
+            <ComponentRef Id="cmp2476EF8FA82D9BE393E026472F684A85" />
+            <ComponentRef Id="cmpE25104C7C285D1CEF209B01C68EC0DE9" />
+            <ComponentRef Id="cmp969854FA455708B7800314D233D3A4F8" />
+            <ComponentRef Id="cmpF8EB11884F6A5AC17EA2F7D1C2F25BE5" />
+            <ComponentRef Id="cmpBB88B766ADE5468876897F068C3548DB" />
+            <ComponentRef Id="cmp18922FA5EB881D193CBF686458A17763" />
+            <ComponentRef Id="cmpE1F091D8EE5FDE2DCFCCFEF15F423B4C" />
+            <ComponentRef Id="cmp73D673123F0C9CD4F1F865097ADB05D1" />
+            <ComponentRef Id="cmp610170DB11DE0424644A9DF825ECD46D" />
+            <ComponentRef Id="cmpE691F416812BBA2EB7692C785CC86F2D" />
+            <ComponentRef Id="cmp521E7EA8F9C3D0CE375F45CC7B55912F" />
+            <ComponentRef Id="cmpDC356C9626472E9EC49BAB502A31BCF8" />
+            <ComponentRef Id="cmp77E0EAC28B6192246204D568434B5F37" />
+            <ComponentRef Id="cmp7417C7336DE330FEFACD13A11BD1F68A" />
+            <ComponentRef Id="cmp78E77709112D9F2B60C411ABDC7E1FA7" />
+            <ComponentRef Id="cmp09E1D40054A28E784F3F02178CD89806" />
+            <ComponentRef Id="cmp189756088ABDE63F8F003544E82CB22D" />
+            <ComponentRef Id="cmp742FD5E814207D55B90BDF53A20A2755" />
+            <ComponentRef Id="cmp9009AA59104EF7C2E608B19BA2F0717A" />
+            <ComponentRef Id="cmpEE50310DACF861E5BB3B8B84CBB12660" />
+            <ComponentRef Id="cmp45ECE869161BCCC429713377AE48D889" />
+            <ComponentRef Id="cmp2EC49880F9F13167744D75632244EB54" />
+            <ComponentRef Id="cmpBA3AAFB1F8B73456E38BFF9140135766" />
+            <ComponentRef Id="cmpE5B5803FA11F9F318F7769C8E590C47D" />
+            <ComponentRef Id="cmp7836CD939A2A160EB8122A2C4B0CA24C" />
+            <ComponentRef Id="cmp3C5AEA5EE4D7861AD37649657DB602B7" />
+            <ComponentRef Id="cmp1360CBD958AD311640EEFF6EE9BCD3FE" />
+            <ComponentRef Id="cmp09516B846B8A3B2D513BDA719BCBE07B" />
+            <ComponentRef Id="cmp6B32ADC44F97E6A3FB2661C2E8EDA103" />
+            <ComponentRef Id="cmp08F27AB6C862AA825F3B86A0E964F0A6" />
+            <ComponentRef Id="cmp001633C4F7208C023CF8F5CEC616F78C" />
+            <ComponentRef Id="cmp6B46E2777AFD7C6CFFF4E229EC48FFC8" />
+            <ComponentRef Id="cmp3F1EC09A8591E7AC8FD3088F332FE525" />
+            <ComponentRef Id="cmp7E6FC929BEE854C726729F558172B59A" />
+            <ComponentRef Id="cmp7B26D128F9B6F142307398E5FB0F81D4" />
+            <ComponentRef Id="cmpAD385895882D3588D97DD54EBB9569A2" />
+            <ComponentRef Id="cmp7EBB4F5B6F1791C852AB3F1F4D076777" />
+            <ComponentRef Id="cmpDABA4C63D9C809B1630D94BDDE878D96" />
+            <ComponentRef Id="cmp9AE30E08D156F87102D9E9A01972682D" />
+            <ComponentRef Id="cmpA0E6744256415F967C67AFC15DDA65C9" />
+            <ComponentRef Id="cmpE39758906F37112ADA5273A4019240A7" />
+            <ComponentRef Id="cmp39B3FCF07987A0102D3F2F1900AB1474" />
+            <ComponentRef Id="cmp238FE22076D2C3391EBEC2B2A5D05A68" />
+            <ComponentRef Id="cmp634BF3EB6856267A58CC623E514EA963" />
+            <ComponentRef Id="cmp319EBCACE420F8FDF1E72511B708CFDC" />
+            <ComponentRef Id="cmp4500806DCD90E8ECD32160512342B7B7" />
+            <ComponentRef Id="cmp0AC79799D6EDFFCDF01E2A1AFB4C1450" />
+            <ComponentRef Id="cmp4BF627F27BCEE3B31063063B5F1FDEA4" />
+            <ComponentRef Id="cmp507D037B997617D6E9A3D4492E97E141" />
+            <ComponentRef Id="cmp20AAC748973B2F1879A088C704852C97" />
+            <ComponentRef Id="cmp77B87A7D5BEBD8750C4BD8D18E0441FD" />
+            <ComponentRef Id="cmp27AF21B3949145F89D7F0104F2942F97" />
+            <ComponentRef Id="cmpE703DA5D43A9337EFF0F0A0306B225FD" />
+            <ComponentRef Id="cmpBED76C6F48D3001B07CE8780328D30C4" />
+        </ComponentGroup>
+    </Fragment>
+</Wix>
