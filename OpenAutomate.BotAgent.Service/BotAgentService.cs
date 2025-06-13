@@ -214,6 +214,12 @@ namespace OpenAutomate.BotAgent.Service
                 else
                 {
                     _logger.LogInformation("SignalRBroadcaster service initialized");
+                    
+                    // Inject the SignalRBroadcaster into the ExecutionManager
+                    if (_executionManager is ExecutionManager execManager)
+                    {
+                        execManager.SetSignalRBroadcaster(_signalRBroadcaster);
+                    }
                 }
                 
                 // Log the actual URLs the server is listening on

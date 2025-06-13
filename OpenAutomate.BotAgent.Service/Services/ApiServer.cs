@@ -200,6 +200,26 @@ namespace OpenAutomate.BotAgent.Service.Services
                                 break;
                             }
                         }
+                        // Check if the path matches /api/execution/{executionId}/status
+                        else if (path.StartsWith("/api/execution/") && path.EndsWith("/status") && method == "POST")
+                        {
+                            var pathParts = path.Split('/');
+                            if (pathParts.Length >= 4)
+                            {
+                                var executionId = pathParts[3];
+                                if (!string.IsNullOrEmpty(executionId))
+                                {
+                                    await HandleExecutionStatusUpdateAsync(request, response, executionId);
+                                    break;
+                                }
+                            }
+                        }
+                        // Check if the path matches /api/status (general status update)
+                        else if (path == "/api/status" && method == "POST")
+                        {
+                            await HandleStatusUpdateAsync(request, response);
+                            break;
+                        }
                         
                         SendNotFound(response);
                         break;
@@ -440,6 +460,101 @@ namespace OpenAutomate.BotAgent.Service.Services
             {
                 _logger.LogError(ex, "Error getting asset '{Key}'", key);
                 SendErrorResponse(response, $"An error occurred while retrieving asset '{key}'");
+            }
+        }
+        
+        /// <summary>
+        /// Handles execution status update requests
+        /// </summary>
+        private async Task HandleExecutionStatusUpdateAsync(HttpListenerRequest request, HttpListenerResponse response, string executionId)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(executionId))
+                {
+                    SendBadRequest(response, "Execution ID is required");
+                    return;
+                }
+
+                // Read the request body
+                using var reader = new StreamReader(request.InputStream, Encoding.UTF8);
+                var body = await reader.ReadToEndAsync();
+                
+                if (string.IsNullOrEmpty(body))
+                {
+                    SendBadRequest(response, "Request body is required");
+                    return;
+                }
+
+                // Parse the status update
+                var statusUpdate = JsonSerializer.Deserialize<Dictionary<string, object>>(body);
+                if (!statusUpdate.TryGetValue("status", out var statusObj) || statusObj == null)
+                {
+                    SendBadRequest(response, "Status is required");
+                    return;
+                }
+
+                var status = statusObj.ToString();
+                var message = statusUpdate.TryGetValue("message", out var messageObj) ? messageObj?.ToString() : null;
+
+                _logger.LogInformation("Received execution status update for {ExecutionId}: {Status}", executionId, status);
+
+                // Here we could broadcast the status update to SignalR clients if needed
+                // For now, just acknowledge the update
+                await SendJsonResponseAsync(response, new { success = true, message = "Status updated" });
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Invalid JSON in execution status update request");
+                SendBadRequest(response, "Invalid JSON format");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling execution status update for {ExecutionId}", executionId);
+                SendErrorResponse(response, "Internal server error");
+            }
+        }
+        
+        /// <summary>
+        /// Handles general status update requests
+        /// </summary>
+        private async Task HandleStatusUpdateAsync(HttpListenerRequest request, HttpListenerResponse response)
+        {
+            try
+            {
+                // Read the request body
+                using var reader = new StreamReader(request.InputStream, Encoding.UTF8);
+                var body = await reader.ReadToEndAsync();
+                
+                if (string.IsNullOrEmpty(body))
+                {
+                    SendBadRequest(response, "Request body is required");
+                    return;
+                }
+
+                // Parse the status update
+                var statusUpdate = JsonSerializer.Deserialize<Dictionary<string, object>>(body);
+                if (!statusUpdate.TryGetValue("status", out var statusObj) || statusObj == null)
+                {
+                    SendBadRequest(response, "Status is required");
+                    return;
+                }
+
+                var status = statusObj.ToString();
+                _logger.LogInformation("Received general status update: {Status}", status);
+
+                // Acknowledge the update
+                await SendJsonResponseAsync(response, new { success = true, message = "Status updated" });
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Invalid JSON in status update request");
+                SendBadRequest(response, "Invalid JSON format");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling status update");
+                SendErrorResponse(response, "Internal server error");
             }
         }
         

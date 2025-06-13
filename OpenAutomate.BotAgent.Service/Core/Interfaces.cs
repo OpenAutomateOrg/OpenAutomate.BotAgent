@@ -92,6 +92,14 @@ namespace OpenAutomate.BotAgent.Service.Core
         Task UpdateStatusAsync(string status, string executionId = null);
         
         /// <summary>
+        /// Updates execution status on the server
+        /// </summary>
+        /// <param name="executionId">Execution ID</param>
+        /// <param name="status">Current status</param>
+        /// <param name="message">Optional status message</param>
+        Task UpdateExecutionStatusAsync(string executionId, string status, string message = null);
+        
+        /// <summary>
         /// Gets an asset from the server
         /// </summary>
         Task<string> GetAssetAsync(string key, string machineKey);

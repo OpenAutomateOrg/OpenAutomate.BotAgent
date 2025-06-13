@@ -222,6 +222,28 @@ namespace OpenAutomate.BotAgent.Service.Services
         }
         
         /// <summary>
+        /// Sends an execution status update to the hub
+        /// </summary>
+        public async Task SendExecutionStatusUpdateAsync(string executionId, string status, string message = null)
+        {
+            if (_connection?.State != HubConnectionState.Connected)
+            {
+                _logger.LogWarning("Cannot send execution status update: Not connected");
+                return;
+            }
+            
+            try
+            {
+                await _connection.InvokeAsync("SendExecutionStatusUpdate", executionId, status, message);
+                _logger.LogDebug($"Execution status update sent for {executionId}: {status}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send execution status update for {ExecutionId}", executionId);
+            }
+        }
+        
+        /// <summary>
         /// Starts the keep-alive timer to send periodic pings
         /// </summary>
         private void StartKeepAliveTimer()
