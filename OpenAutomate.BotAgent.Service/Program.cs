@@ -31,10 +31,9 @@ try
             
             // Register core services
             services.AddSingleton<IAssetManager, AssetManager>(); // Use the real implementation
-            services.AddSingleton<IExecutionManager, ExecutionManager>(); // Use the real execution manager
-            services.AddSingleton<IServerCommunication, ServerCommunication>();
-            services.AddSingleton<IMachineKeyManager, MachineKeyManager>();
             services.AddSingleton<IConfigurationService, ConfigurationService>();
+            services.AddSingleton<IMachineKeyManager, MachineKeyManager>();
+            services.AddSingleton<IServerCommunication, ServerCommunication>();
             
             // Register package download service and its dependencies
             services.AddHttpClient<IPackageDownloadService, PackageDownloadService>();
@@ -42,8 +41,8 @@ try
             // Register SignalR client for server communication
             services.AddSingleton<BotAgentSignalRClient>();
             
-            // Register SignalR hub
-            services.AddSingleton<BotAgentLocalHub>();
+            // Register execution manager (SignalRBroadcaster will be injected later by BotAgentService)
+            services.AddSingleton<IExecutionManager, ExecutionManager>();
             
             // Register API server
             services.AddSingleton<IApiServer, ApiServer>();

@@ -161,6 +161,38 @@ namespace OpenAutomate.BotAgent.Service.Services
         }
         
         /// <summary>
+        /// Updates execution status on the server
+        /// </summary>
+        /// <param name="executionId">Execution ID</param>
+        /// <param name="status">Current status</param>
+        /// <param name="message">Optional status message</param>
+        public async Task UpdateExecutionStatusAsync(string executionId, string status, string message = null)
+        {
+            if (!IsConnected)
+            {
+                _logger.LogWarning("Cannot update execution status for {ExecutionId}: Not connected", executionId);
+                return;
+            }
+            
+            if (string.IsNullOrEmpty(executionId) || string.IsNullOrEmpty(status))
+            {
+                _logger.LogWarning("Invalid execution status update parameters: ExecutionId={ExecutionId}, Status={Status}", executionId, status);
+                return;
+            }
+            
+            try
+            {
+                _logger.LogDebug("Updating execution status for {ExecutionId} to {Status}", executionId, status);
+                await _signalRClient.SendExecutionStatusUpdateAsync(executionId, status, message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating execution status for {ExecutionId} to {Status}", executionId, status);
+                // Don't mark as disconnected for execution status failures as they might be transient
+            }
+        }
+        
+        /// <summary>
         /// Gets an asset from the server
         /// </summary>
         public async Task<string> GetAssetAsync(string key, string machineKey)
