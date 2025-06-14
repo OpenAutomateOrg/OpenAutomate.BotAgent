@@ -1,26 +1,22 @@
 using System;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using OpenAutomate.BotAgent.Service.Core;
 
 namespace OpenAutomate.BotAgent.Service.Services
 {
     /// <summary>
-    /// Service to broadcast execution status updates through SignalR
+    /// Service to send execution status updates to the backend server
     /// </summary>
     public class SignalRBroadcaster
     {
-        private readonly IHubContext<BotAgentLocalHub> _hubContext;
         private readonly IServerCommunication _serverCommunication;
         private readonly ILogger<SignalRBroadcaster> _logger;
 
         // Standardized log message templates
         private static class LogMessages
         {
-            public const string ExecutionStatusBroadcast = "Broadcasting execution status for {ExecutionId}: {Status}";
-            public const string LocalHubBroadcastSuccess = "Local hub broadcast successful for execution {ExecutionId}";
-            public const string LocalHubBroadcastFailed = "Local hub broadcast failed for execution {ExecutionId}: {Error}";
+            public const string ExecutionStatusUpdate = "Sending execution status update for {ExecutionId}: {Status}";
             public const string ServerStatusUpdateSuccess = "Server status update successful for execution {ExecutionId}";
             public const string ServerStatusUpdateFailed = "Server status update failed for execution {ExecutionId}: {Error}";
         }
@@ -29,22 +25,17 @@ namespace OpenAutomate.BotAgent.Service.Services
         /// Initializes a new instance of the SignalRBroadcaster class
         /// </summary>
         public SignalRBroadcaster(
-            IHubContext<BotAgentLocalHub> hubContext,
             IServerCommunication serverCommunication,
             ILogger<SignalRBroadcaster> logger)
         {
-            _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
             _serverCommunication = serverCommunication ?? throw new ArgumentNullException(nameof(serverCommunication));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
-            // Subscribe to server connection changes
-            _serverCommunication.ConnectionChanged += OnServerConnectionChanged;
-            
-            _logger.LogInformation("SignalRBroadcaster initialized");
+            _logger.LogInformation("SignalRBroadcaster initialized for server communication only");
         }
         
         /// <summary>
-        /// Broadcasts execution status to both local clients and server
+        /// Sends execution status update to the backend server
         /// </summary>
         /// <param name="executionId">Execution ID</param>
         /// <param name="status">Current status</param>
@@ -53,45 +44,14 @@ namespace OpenAutomate.BotAgent.Service.Services
         {
             if (string.IsNullOrEmpty(executionId) || string.IsNullOrEmpty(status))
             {
-                _logger.LogWarning("Invalid execution status broadcast parameters: ExecutionId={ExecutionId}, Status={Status}", executionId, status);
+                _logger.LogWarning("Invalid execution status update parameters: ExecutionId={ExecutionId}, Status={Status}", executionId, status);
                 return;
             }
 
-            _logger.LogInformation(LogMessages.ExecutionStatusBroadcast, executionId, status);
-
-            var statusData = new
-            {
-                ExecutionId = executionId,
-                Status = status,
-                Message = message ?? string.Empty,
-                Timestamp = DateTime.UtcNow
-            };
-
-            // Broadcast to local SignalR clients (UI, etc.)
-            await BroadcastToLocalClientsAsync(statusData);
+            _logger.LogInformation(LogMessages.ExecutionStatusUpdate, executionId, status);
 
             // Send status update to server
             await SendStatusToServerAsync(executionId, status, message);
-        }
-        
-        /// <summary>
-        /// Broadcasts to local SignalR clients
-        /// </summary>
-        private async Task BroadcastToLocalClientsAsync(object statusData)
-        {
-            try
-            {
-                if (_hubContext?.Clients != null)
-                {
-                    await _hubContext.Clients.All.SendAsync("ExecutionStatusUpdate", statusData);
-                    _logger.LogDebug(LogMessages.LocalHubBroadcastSuccess, statusData.GetType().GetProperty("ExecutionId")?.GetValue(statusData));
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, LogMessages.LocalHubBroadcastFailed, 
-                    statusData.GetType().GetProperty("ExecutionId")?.GetValue(statusData), ex.Message);
-            }
         }
         
         /// <summary>
@@ -114,22 +74,6 @@ namespace OpenAutomate.BotAgent.Service.Services
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, LogMessages.ServerStatusUpdateFailed, executionId, ex.Message);
-            }
-        }
-        
-        /// <summary>
-        /// Called when the server connection status changes
-        /// </summary>
-        private async void OnServerConnectionChanged(bool isConnected)
-        {
-            try
-            {
-                _logger.LogInformation("Broadcasting connection status change to clients: {IsConnected}", isConnected);
-                await _hubContext.Clients.All.SendAsync("ConnectionStatusChanged", isConnected);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error broadcasting connection status change");
             }
         }
     }
