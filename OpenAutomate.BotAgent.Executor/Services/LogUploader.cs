@@ -9,7 +9,7 @@ namespace OpenAutomate.BotAgent.Executor.Services
     /// <summary>
     /// Handles uploading log files to the backend API
     /// </summary>
-    public class LogUploader
+    public class LogUploader : IDisposable
     {
         private readonly ILogger<LogUploader> _logger;
 

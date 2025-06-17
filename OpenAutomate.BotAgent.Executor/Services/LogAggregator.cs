@@ -27,6 +27,20 @@ namespace OpenAutomate.BotAgent.Executor.Services
             public const string PythonLogSearching = "Searching for Python bot logs in: {ScriptPath}";
         }
 
+        // Log source constants
+        private static class LogSources
+        {
+            public const string Executor = "Executor";
+            public const string PythonBot = "PythonBot";
+        }
+
+        // Log level constants
+        private static class LogLevels
+        {
+            public const string Warning = "WARNING";
+            public const string Info = "INFO";
+        }
+
         public LogAggregator(ILogger<LogAggregator> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -96,77 +110,116 @@ namespace OpenAutomate.BotAgent.Executor.Services
         /// </summary>
         private async Task CollectExecutorLogsAsync(string executorLogPath, List<LogEntry> logEntries)
         {
-            if (File.Exists(executorLogPath))
+            if (!File.Exists(executorLogPath))
             {
-                _logger.LogDebug(LogMessages.ExecutorLogFound, executorLogPath);
-                
-                try
+                await AddExecutorLogNotFoundEntry(logEntries, executorLogPath);
+                return;
+            }
+
+            _logger.LogDebug(LogMessages.ExecutorLogFound, executorLogPath);
+
+            try
+            {
+                await ReadExecutorLogFile(executorLogPath, logEntries);
+            }
+            catch (IOException ioEx) when (ioEx.Message.Contains("being used by another process"))
+            {
+                await HandleLockedExecutorLogFile(executorLogPath, logEntries, ioEx);
+            }
+        }
+
+        /// <summary>
+        /// Reads the executor log file and adds entries to the collection
+        /// </summary>
+        private async Task ReadExecutorLogFile(string executorLogPath, List<LogEntry> logEntries)
+        {
+            using var fileStream = new FileStream(executorLogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(fileStream);
+
+            string line;
+            while ((line = await reader.ReadLineAsync()) != null)
+            {
+                var entry = ParseLogLine(line, LogSources.Executor);
+                if (entry != null)
                 {
-                    // Use FileShare.ReadWrite to allow reading even if the file is still being written to
-                    using var fileStream = new FileStream(executorLogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                    using var reader = new StreamReader(fileStream);
-                    
-                    string line;
-                    while ((line = await reader.ReadLineAsync()) != null)
-                    {
-                        var entry = ParseLogLine(line, "Executor");
-                        if (entry != null)
-                        {
-                            logEntries.Add(entry);
-                        }
-                    }
-                }
-                catch (IOException ioEx) when (ioEx.Message.Contains("being used by another process"))
-                {
-                    _logger.LogWarning("Executor log file is locked, attempting to read with retry: {LogPath}", executorLogPath);
-                    
-                    // Wait a bit and try again with a more permissive file sharing mode
-                    await Task.Delay(1000);
-                    
-                    try
-                    {
-                        // Try again with maximum file sharing permissions
-                        using var fileStream = new FileStream(executorLogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-                        using var reader = new StreamReader(fileStream);
-                        
-                        string line;
-                        while ((line = await reader.ReadLineAsync()) != null)
-                        {
-                            var entry = ParseLogLine(line, "Executor");
-                            if (entry != null)
-                            {
-                                logEntries.Add(entry);
-                            }
-                        }
-                    }
-                    catch (Exception retryEx)
-                    {
-                        _logger.LogWarning(retryEx, "Failed to read executor log file after retry: {LogPath}", executorLogPath);
-                        
-                        // Add a placeholder entry indicating the file couldn't be read
-                        logEntries.Add(new LogEntry
-                        {
-                            Timestamp = DateTime.UtcNow,
-                            Level = "WARNING",
-                            Source = "Executor",
-                            Message = $"Could not read executor log file (file locked): {executorLogPath}"
-                        });
-                    }
+                    logEntries.Add(entry);
                 }
             }
-            else
+        }
+
+        /// <summary>
+        /// Handles the case when the executor log file is locked by another process
+        /// </summary>
+        private async Task HandleLockedExecutorLogFile(string executorLogPath, List<LogEntry> logEntries, IOException ioEx)
+        {
+            _logger.LogWarning(ioEx, "Executor log file is locked, attempting to read with retry: {LogPath}", executorLogPath);
+
+            // Wait a bit and try again with a more permissive file sharing mode
+            await Task.Delay(1000);
+
+            try
             {
-                _logger.LogWarning(LogMessages.ExecutorLogNotFound, executorLogPath);
-                
-                // Add a placeholder entry indicating executor log was not found
-                logEntries.Add(new LogEntry
-                {
-                    Timestamp = DateTime.UtcNow,
-                    Level = "WARNING",
-                    Source = "Executor",
-                    Message = $"Executor log file not found: {executorLogPath}"
-                });
+                await ReadExecutorLogFileWithMaxSharing(executorLogPath, logEntries);
             }
+            catch (Exception retryEx)
+            {
+                await AddExecutorLogReadErrorEntry(logEntries, executorLogPath, retryEx);
+            }
+        }
+
+        /// <summary>
+        /// Attempts to read the executor log file with maximum file sharing permissions
+        /// </summary>
+        private async Task ReadExecutorLogFileWithMaxSharing(string executorLogPath, List<LogEntry> logEntries)
+        {
+            using var fileStream = new FileStream(executorLogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(fileStream);
+
+            string line;
+            while ((line = await reader.ReadLineAsync()) != null)
+            {
+                var entry = ParseLogLine(line, LogSources.Executor);
+                if (entry != null)
+                {
+                    logEntries.Add(entry);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Adds an entry indicating the executor log file was not found
+        /// </summary>
+        private async Task AddExecutorLogNotFoundEntry(List<LogEntry> logEntries, string executorLogPath)
+        {
+            _logger.LogWarning(LogMessages.ExecutorLogNotFound, executorLogPath);
+
+            logEntries.Add(new LogEntry
+            {
+                Timestamp = DateTime.UtcNow,
+                Level = LogLevels.Warning,
+                Source = LogSources.Executor,
+                Message = $"Executor log file not found: {executorLogPath}"
+            });
+
+            await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Adds an entry indicating an error occurred while reading the executor log file
+        /// </summary>
+        private async Task AddExecutorLogReadErrorEntry(List<LogEntry> logEntries, string executorLogPath, Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read executor log file after retry: {LogPath}", executorLogPath);
+
+            logEntries.Add(new LogEntry
+            {
+                Timestamp = DateTime.UtcNow,
+                Level = LogLevels.Warning,
+                Source = LogSources.Executor,
+                Message = $"Could not read executor log file (file locked): {executorLogPath}"
+            });
+
+            await Task.CompletedTask;
         }
 
         /// <summary>
@@ -178,96 +231,156 @@ namespace OpenAutomate.BotAgent.Executor.Services
 
             if (!Directory.Exists(scriptPath))
             {
-                logEntries.Add(new LogEntry
-                {
-                    Timestamp = DateTime.UtcNow,
-                    Level = "WARNING",
-                    Source = "PythonBot",
-                    Message = $"Script path does not exist: {scriptPath}"
-                });
+                AddPythonBotScriptPathNotFoundEntry(logEntries, scriptPath);
                 return;
             }
 
-            // Look for common Python log files
-            var logPatterns = new[]
-            {
-                "*.log",
-                "logs/*.log",
-                "*.txt"
-            };
+            var foundLogs = await ProcessPythonLogPatterns(scriptPath, logEntries);
 
+            if (!foundLogs)
+            {
+                AddPythonBotNoLogsFoundEntry(logEntries);
+            }
+        }
+
+        /// <summary>
+        /// Processes all Python log patterns and returns whether any logs were found
+        /// </summary>
+        private async Task<bool> ProcessPythonLogPatterns(string scriptPath, List<LogEntry> logEntries)
+        {
+            var logPatterns = new[] { "*.log", "logs/*.log", "*.txt" };
             var foundLogs = false;
 
             foreach (var pattern in logPatterns)
             {
-                var searchPath = Path.Combine(scriptPath, pattern);
-                var directory = Path.GetDirectoryName(searchPath);
-                var fileName = Path.GetFileName(searchPath);
+                var patternFoundLogs = await ProcessSinglePythonLogPattern(scriptPath, pattern, logEntries);
+                foundLogs = foundLogs || patternFoundLogs;
+            }
 
-                if (Directory.Exists(directory))
+            return foundLogs;
+        }
+
+        /// <summary>
+        /// Processes a single Python log pattern and returns whether any logs were found
+        /// </summary>
+        private async Task<bool> ProcessSinglePythonLogPattern(string scriptPath, string pattern, List<LogEntry> logEntries)
+        {
+            var searchPath = Path.Combine(scriptPath, pattern);
+            var directory = Path.GetDirectoryName(searchPath);
+            var fileName = Path.GetFileName(searchPath);
+
+            if (!Directory.Exists(directory))
+                return false;
+
+            var files = Directory.GetFiles(directory, fileName);
+            var foundLogs = false;
+
+            foreach (var file in files)
+            {
+                _logger.LogDebug(LogMessages.PythonLogFound, file);
+                foundLogs = true;
+                await ProcessPythonLogFile(file, logEntries);
+            }
+
+            return foundLogs;
+        }
+
+        /// <summary>
+        /// Processes a single Python log file
+        /// </summary>
+        private async Task ProcessPythonLogFile(string file, List<LogEntry> logEntries)
+        {
+            try
+            {
+                await ReadPythonLogFile(file, logEntries);
+            }
+            catch (IOException ioEx) when (ioEx.Message.Contains("being used by another process"))
+            {
+                AddPythonBotFileLockedEntry(logEntries, file, ioEx);
+            }
+            catch (Exception ex)
+            {
+                AddPythonBotFileErrorEntry(logEntries, file, ex);
+            }
+        }
+
+        /// <summary>
+        /// Reads a Python log file and adds entries to the collection
+        /// </summary>
+        private async Task ReadPythonLogFile(string file, List<LogEntry> logEntries)
+        {
+            using var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(fileStream);
+
+            string line;
+            while ((line = await reader.ReadLineAsync()) != null)
+            {
+                var entry = ParseLogLine(line, $"PythonBot({Path.GetFileName(file)})");
+                if (entry != null)
                 {
-                    var files = Directory.GetFiles(directory, fileName);
-                    foreach (var file in files)
-                    {
-                        _logger.LogDebug(LogMessages.PythonLogFound, file);
-                        foundLogs = true;
-
-                        try
-                        {
-                            // Use FileShare.ReadWrite to allow reading even if the file is still being written to
-                            using var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                            using var reader = new StreamReader(fileStream);
-                            
-                            string line;
-                            while ((line = await reader.ReadLineAsync()) != null)
-                            {
-                                var entry = ParseLogLine(line, $"PythonBot({Path.GetFileName(file)})");
-                                if (entry != null)
-                                {
-                                    logEntries.Add(entry);
-                                }
-                            }
-                        }
-                        catch (IOException ioEx) when (ioEx.Message.Contains("being used by another process"))
-                        {
-                            _logger.LogWarning("Python log file is locked, skipping: {LogPath}", file);
-                            
-                            // Add a placeholder entry indicating the file couldn't be read
-                            logEntries.Add(new LogEntry
-                            {
-                                Timestamp = DateTime.UtcNow,
-                                Level = "WARNING",
-                                Source = $"PythonBot({Path.GetFileName(file)})",
-                                Message = $"Could not read Python log file (file locked): {file}"
-                            });
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Failed to read Python log file: {LogPath}", file);
-                            
-                            // Add a placeholder entry indicating the file couldn't be read
-                            logEntries.Add(new LogEntry
-                            {
-                                Timestamp = DateTime.UtcNow,
-                                Level = "WARNING",
-                                Source = $"PythonBot({Path.GetFileName(file)})",
-                                Message = $"Error reading Python log file: {file} - {ex.Message}"
-                            });
-                        }
-                    }
+                    logEntries.Add(entry);
                 }
             }
+        }
 
-            if (!foundLogs)
+        /// <summary>
+        /// Adds an entry indicating the Python bot script path does not exist
+        /// </summary>
+        private void AddPythonBotScriptPathNotFoundEntry(List<LogEntry> logEntries, string scriptPath)
+        {
+            logEntries.Add(new LogEntry
             {
-                logEntries.Add(new LogEntry
-                {
-                    Timestamp = DateTime.UtcNow,
-                    Level = "INFO",
-                    Source = "PythonBot",
-                    Message = "No Python bot log files found in standard locations"
-                });
-            }
+                Timestamp = DateTime.UtcNow,
+                Level = LogLevels.Warning,
+                Source = LogSources.PythonBot,
+                Message = $"Script path does not exist: {scriptPath}"
+            });
+        }
+
+        /// <summary>
+        /// Adds an entry indicating no Python bot logs were found
+        /// </summary>
+        private void AddPythonBotNoLogsFoundEntry(List<LogEntry> logEntries)
+        {
+            logEntries.Add(new LogEntry
+            {
+                Timestamp = DateTime.UtcNow,
+                Level = LogLevels.Info,
+                Source = LogSources.PythonBot,
+                Message = "No Python bot log files found in standard locations"
+            });
+        }
+
+        /// <summary>
+        /// Adds an entry indicating a Python bot log file was locked
+        /// </summary>
+        private void AddPythonBotFileLockedEntry(List<LogEntry> logEntries, string file, IOException ioEx)
+        {
+            _logger.LogWarning(ioEx, "Python log file is locked, skipping: {LogPath}", file);
+
+            logEntries.Add(new LogEntry
+            {
+                Timestamp = DateTime.UtcNow,
+                Level = LogLevels.Warning,
+                Source = $"PythonBot({Path.GetFileName(file)})",
+                Message = $"Could not read Python log file (file locked): {file}"
+            });
+        }
+
+        /// <summary>
+        /// Adds an entry indicating an error occurred while reading a Python bot log file
+        /// </summary>
+        private void AddPythonBotFileErrorEntry(List<LogEntry> logEntries, string file, Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read Python log file: {LogPath}", file);
+
+            logEntries.Add(new LogEntry
+            {
+                Timestamp = DateTime.UtcNow,
+                Level = LogLevels.Warning,
+                Source = $"PythonBot({Path.GetFileName(file)})",
+                Message = $"Error reading Python log file: {file} - {ex.Message}"
+            });
         }
 
         /// <summary>
@@ -278,78 +391,18 @@ namespace OpenAutomate.BotAgent.Executor.Services
             if (string.IsNullOrWhiteSpace(line))
                 return null;
 
-            // Try to extract timestamp and level from common log formats
             var timestamp = DateTime.UtcNow;
             var level = "INFO";
             var message = line;
 
-            // Common patterns:
-            // [2024-01-15 10:30:45] INFO: Message
-            // 2024-01-15 10:30:45 - INFO - Message
-            // INFO: Message
-
             try
             {
-                // Pattern 1: [2024-01-15 10:30:45] LEVEL: Message
-                if (line.StartsWith("[") && line.Contains("]"))
+                var parseResult = TryParseLogLinePatterns(line);
+                if (parseResult != null)
                 {
-                    var closeBracket = line.IndexOf(']');
-                    if (closeBracket > 0)
-                    {
-                        var timestampStr = line.Substring(1, closeBracket - 1);
-                        if (DateTime.TryParse(timestampStr, out var parsedTimestamp))
-                        {
-                            timestamp = parsedTimestamp;
-                        }
-
-                        var remainder = line.Substring(closeBracket + 1).Trim();
-                        var colonIndex = remainder.IndexOf(':');
-                        if (colonIndex > 0)
-                        {
-                            level = remainder.Substring(0, colonIndex).Trim();
-                            message = remainder.Substring(colonIndex + 1).Trim();
-                        }
-                        else
-                        {
-                            message = remainder;
-                        }
-                    }
-                }
-                // Pattern 2: YYYY-MM-DD HH:mm:ss - LEVEL - Message
-                else if (line.Length > 19 && line[4] == '-' && line[7] == '-' && line[10] == ' ')
-                {
-                    var timestampStr = line.Substring(0, 19);
-                    if (DateTime.TryParse(timestampStr, out var parsedTimestamp))
-                    {
-                        timestamp = parsedTimestamp;
-                    }
-
-                    var remainder = line.Substring(19).Trim();
-                    if (remainder.StartsWith("- "))
-                    {
-                        remainder = remainder.Substring(2);
-                        var dashIndex = remainder.IndexOf(" - ");
-                        if (dashIndex > 0)
-                        {
-                            level = remainder.Substring(0, dashIndex).Trim();
-                            message = remainder.Substring(dashIndex + 3).Trim();
-                        }
-                        else
-                        {
-                            message = remainder;
-                        }
-                    }
-                }
-                // Pattern 3: LEVEL: Message
-                else if (line.Contains(":"))
-                {
-                    var colonIndex = line.IndexOf(':');
-                    var potentialLevel = line.Substring(0, colonIndex).Trim();
-                    if (IsValidLogLevel(potentialLevel))
-                    {
-                        level = potentialLevel;
-                        message = line.Substring(colonIndex + 1).Trim();
-                    }
+                    timestamp = parseResult.Timestamp ?? timestamp;
+                    level = parseResult.Level ?? level;
+                    message = parseResult.Message ?? message;
                 }
             }
             catch
@@ -365,6 +418,106 @@ namespace OpenAutomate.BotAgent.Executor.Services
                 Source = source,
                 Message = message
             };
+        }
+
+        /// <summary>
+        /// Attempts to parse log line using various patterns
+        /// </summary>
+        private LogParseResult TryParseLogLinePatterns(string line)
+        {
+            // Pattern 1: [2024-01-15 10:30:45] LEVEL: Message
+            var bracketResult = TryParseBracketPattern(line);
+            if (bracketResult != null)
+                return bracketResult;
+
+            // Pattern 2: YYYY-MM-DD HH:mm:ss - LEVEL - Message
+            var dashResult = TryParseDashPattern(line);
+            if (dashResult != null)
+                return dashResult;
+
+            // Pattern 3: LEVEL: Message
+            var colonResult = TryParseColonPattern(line);
+            if (colonResult != null)
+                return colonResult;
+
+            return null;
+        }
+
+        /// <summary>
+        /// Tries to parse bracket pattern: [2024-01-15 10:30:45] LEVEL: Message
+        /// </summary>
+        private LogParseResult TryParseBracketPattern(string line)
+        {
+            if (!line.StartsWith("[") || !line.Contains("]"))
+                return null;
+
+            var closeBracket = line.IndexOf(']');
+            if (closeBracket <= 0)
+                return null;
+
+            var timestampStr = line.Substring(1, closeBracket - 1);
+            var timestamp = DateTime.TryParse(timestampStr, out var parsedTimestamp) ? parsedTimestamp : (DateTime?)null;
+
+            var remainder = line.Substring(closeBracket + 1).Trim();
+            var colonIndex = remainder.IndexOf(':');
+
+            if (colonIndex > 0)
+            {
+                var level = remainder.Substring(0, colonIndex).Trim();
+                var message = remainder.Substring(colonIndex + 1).Trim();
+                return new LogParseResult { Timestamp = timestamp, Level = level, Message = message };
+            }
+
+            return new LogParseResult { Timestamp = timestamp, Message = remainder };
+        }
+
+        /// <summary>
+        /// Tries to parse dash pattern: YYYY-MM-DD HH:mm:ss - LEVEL - Message
+        /// </summary>
+        private LogParseResult TryParseDashPattern(string line)
+        {
+            if (line.Length <= 19 || line[4] != '-' || line[7] != '-' || line[10] != ' ')
+                return null;
+
+            var timestampStr = line.Substring(0, 19);
+            var timestamp = DateTime.TryParse(timestampStr, out var parsedTimestamp) ? parsedTimestamp : (DateTime?)null;
+
+            var remainder = line.Substring(19).Trim();
+            if (!remainder.StartsWith("- "))
+                return new LogParseResult { Timestamp = timestamp, Message = remainder };
+
+            remainder = remainder.Substring(2);
+            var dashIndex = remainder.IndexOf(" - ");
+
+            if (dashIndex > 0)
+            {
+                var level = remainder.Substring(0, dashIndex).Trim();
+                var message = remainder.Substring(dashIndex + 3).Trim();
+                return new LogParseResult { Timestamp = timestamp, Level = level, Message = message };
+            }
+
+            return new LogParseResult { Timestamp = timestamp, Message = remainder };
+        }
+
+        /// <summary>
+        /// Tries to parse colon pattern: LEVEL: Message
+        /// </summary>
+        private LogParseResult TryParseColonPattern(string line)
+        {
+            if (!line.Contains(":"))
+                return null;
+
+            var colonIndex = line.IndexOf(':');
+            var potentialLevel = line.Substring(0, colonIndex).Trim();
+
+            if (IsValidLogLevel(potentialLevel))
+            {
+                var level = potentialLevel;
+                var message = line.Substring(colonIndex + 1).Trim();
+                return new LogParseResult { Level = level, Message = message };
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -433,5 +586,15 @@ namespace OpenAutomate.BotAgent.Executor.Services
         public string Level { get; set; } = "INFO";
         public string Source { get; set; } = "Unknown";
         public string Message { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Represents the result of parsing a log line
+    /// </summary>
+    internal class LogParseResult
+    {
+        public DateTime? Timestamp { get; set; }
+        public string Level { get; set; }
+        public string Message { get; set; }
     }
 } 
