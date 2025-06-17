@@ -18,11 +18,12 @@ namespace OpenAutomate.BotAgent.Service.Services
     /// <summary>
     /// Enhanced execution manager that handles package download and bot execution with real-time status updates
     /// </summary>
-    public class ExecutionManager : IExecutionManager
+    public class ExecutionManager : IExecutionManager, IDisposable
     {
         private readonly ILogger<ExecutionManager> _logger;
         private readonly IConfigurationService _configService;
         private readonly IPackageDownloadService _packageDownloadService;
+        private readonly IMachineKeyManager _machineKeyManager;
         private readonly string _executorPath;
         private readonly string _botScriptsPath = @"C:\ProgramData\OpenAutomate\BotScripts";
         private readonly ConcurrentDictionary<string, Process> _runningExecutions = new();
@@ -49,11 +50,13 @@ namespace OpenAutomate.BotAgent.Service.Services
         public ExecutionManager(
             ILogger<ExecutionManager> logger,
             IConfigurationService configService,
-            IPackageDownloadService packageDownloadService)
+            IPackageDownloadService packageDownloadService,
+            IMachineKeyManager machineKeyManager)
         {
             _logger = logger;
             _configService = configService;
             _packageDownloadService = packageDownloadService;
+            _machineKeyManager = machineKeyManager;
             _signalRBroadcaster = null; // Will be set later by BotAgentService
             
             // Fix executor path to point to the Executor folder in the installation directory
@@ -207,27 +210,50 @@ namespace OpenAutomate.BotAgent.Service.Services
             await File.WriteAllTextAsync(taskQueuePath, json);
 
             // Spawn dedicated executor process for this single task
-            await SpawnDedicatedExecutorAsync(execution.ExecutionId, taskQueuePath);
+            await SpawnDedicatedExecutorAsync(execution, taskQueuePath);
         }
 
         /// <summary>
-        /// Spawns a dedicated executor process for a single execution
+        /// Spawns a dedicated executor process for the given execution
         /// </summary>
-        private async Task SpawnDedicatedExecutorAsync(string executionId, string taskQueuePath)
+        private async Task SpawnDedicatedExecutorAsync(ExecutionCommand execution, string taskQueuePath)
         {
             try
             {
                 if (!File.Exists(_executorPath))
                 {
                     _logger.LogError(LogMessages.ExecutorFileNotFound, _executorPath);
-                    await BroadcastExecutionStatus(executionId, "Failed", "Executor not found");
+                    await BroadcastExecutionStatus(execution.ExecutionId, "Failed", "Executor not found");
                     return;
+                }
+
+                // Get configuration for log upload parameters
+                var config = _configService.GetConfiguration();
+                var machineKey = _machineKeyManager.GetMachineKey();
+
+                // Build command line arguments
+                var arguments = $"--task-queue \"{taskQueuePath}\" --execution-id \"{execution.ExecutionId}\"";
+                
+                // Add log upload parameters if available
+                if (!string.IsNullOrEmpty(execution.TenantSlug))
+                {
+                    arguments += $" --tenant-slug \"{execution.TenantSlug}\"";
+                }
+                
+                if (!string.IsNullOrEmpty(config.ServerUrl))
+                {
+                    arguments += $" --api-base-url \"{config.ServerUrl}\"";
+                }
+                
+                if (!string.IsNullOrEmpty(machineKey))
+                {
+                    arguments += $" --machine-key \"{machineKey}\"";
                 }
 
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = _executorPath,
-                    Arguments = $"--task-queue \"{taskQueuePath}\" --execution-id \"{executionId}\"",
+                    Arguments = arguments,
                     UseShellExecute = true, // Show console window for each task
                     CreateNoWindow = false,
                     WindowStyle = ProcessWindowStyle.Normal
@@ -237,22 +263,27 @@ namespace OpenAutomate.BotAgent.Service.Services
                 
                 // Enable events to track process completion
                 process.EnableRaisingEvents = true;
-                process.Exited += async (sender, e) => await OnExecutorProcessExited(executionId, process, taskQueuePath);
+                
+                // ✅ FIX: Track the process BEFORE starting it to prevent race condition
+                _runningExecutions.TryAdd(execution.ExecutionId, process);
+                
+                // ✅ FIX: Use proper event handler instead of async void lambda
+                process.Exited += (sender, e) => OnExecutorProcessExited(execution.ExecutionId, process, taskQueuePath);
                 
                 process.Start();
                 
-                // Track the running process
-                _runningExecutions.TryAdd(executionId, process);
-                
-                _logger.LogInformation(LogMessages.ExecutorProcessStarted, executionId, process.Id);
-                await BroadcastExecutionStatus(executionId, "Running", "Execution started");
+                _logger.LogInformation(LogMessages.ExecutorProcessStarted, execution.ExecutionId, process.Id);
+                await BroadcastExecutionStatus(execution.ExecutionId, "Running", "Execution started");
                 
                 // Don't wait for the process - let it run independently
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to spawn executor for execution {ExecutionId}", executionId);
-                await BroadcastExecutionStatus(executionId, "Failed", $"Failed to start executor: {ex.Message}");
+                // ✅ FIX: Clean up tracking if process failed to start
+                _runningExecutions.TryRemove(execution.ExecutionId, out _);
+                
+                _logger.LogError(ex, "Failed to spawn executor for execution {ExecutionId}", execution.ExecutionId);
+                await BroadcastExecutionStatus(execution.ExecutionId, "Failed", $"Failed to start executor: {ex.Message}");
                 
                 // Clean up the temporary task queue file
                 try
@@ -266,41 +297,46 @@ namespace OpenAutomate.BotAgent.Service.Services
 
         /// <summary>
         /// Handles executor process completion
+        /// ✅ FIX: Changed from async Task to void to properly handle Process.Exited event
         /// </summary>
-        private async Task OnExecutorProcessExited(string executionId, Process process, string taskQueuePath)
+        private void OnExecutorProcessExited(string executionId, Process process, string taskQueuePath)
         {
-            try
+            // ✅ FIX: Use Task.Run to handle async operations safely from event handler
+            _ = Task.Run(async () =>
             {
-                _runningExecutions.TryRemove(executionId, out _);
-                
-                var exitCode = process.ExitCode;
-                _logger.LogInformation(LogMessages.ExecutorProcessCompleted, executionId, exitCode);
-                
-                // Determine final status based on exit code
-                string finalStatus = exitCode == 0 ? "Completed" : "Failed";
-                string statusMessage = exitCode == 0 ? "Execution completed successfully" : $"Execution failed with exit code {exitCode}";
-                
-                await BroadcastExecutionStatus(executionId, finalStatus, statusMessage);
-                
-                // Clean up the temporary task queue file
                 try
                 {
-                    if (File.Exists(taskQueuePath))
-                        File.Delete(taskQueuePath);
+                    _runningExecutions.TryRemove(executionId, out _);
+                    
+                    var exitCode = process.ExitCode;
+                    _logger.LogInformation(LogMessages.ExecutorProcessCompleted, executionId, exitCode);
+                    
+                    // Determine final status based on exit code
+                    string finalStatus = exitCode == 0 ? "Completed" : "Failed";
+                    string statusMessage = exitCode == 0 ? "Execution completed successfully" : $"Execution failed with exit code {exitCode}";
+                    
+                    await BroadcastExecutionStatus(executionId, finalStatus, statusMessage);
+                    
+                    // Clean up the temporary task queue file
+                    try
+                    {
+                        if (File.Exists(taskQueuePath))
+                            File.Delete(taskQueuePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to clean up task queue file: {TaskQueuePath}", taskQueuePath);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to clean up task queue file: {TaskQueuePath}", taskQueuePath);
+                    _logger.LogError(ex, "Error handling executor process exit for execution {ExecutionId}", executionId);
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error handling executor process exit for execution {ExecutionId}", executionId);
-            }
-            finally
-            {
-                process?.Dispose();
-            }
+                finally
+                {
+                    process?.Dispose();
+                }
+            });
         }
 
         public async Task CancelExecutionAsync(string executionId)

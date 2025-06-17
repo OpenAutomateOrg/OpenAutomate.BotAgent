@@ -136,99 +136,20 @@ namespace OpenAutomate.BotAgent.Service.Services
             {
                 var request = context.Request;
                 var response = context.Response;
-                
+
                 // Extract the endpoint path
                 var path = request.Url.AbsolutePath.ToLowerInvariant();
                 var method = request.HttpMethod.ToUpperInvariant();
-                
+
                 _logger.LogDebug("Received {Method} request for {Path}", method, path);
-                
+
                 // Route the request to the appropriate handler
-                switch (path)
-                {
-                    case "/api/health":
-                        await HandleHealthCheckAsync(request, response);
-                        break;
-                        
-                    case "/api/status":
-                        await HandleStatusAsync(request, response);
-                        break;
-                        
-                    case "/api/config":
-                        if (method == "GET")
-                            await HandleGetConfigAsync(request, response);
-                        else if (method == "POST")
-                            await HandleUpdateConfigAsync(request, response);
-                        else
-                            SendMethodNotAllowed(response);
-                        break;
-                        
-                    case "/api/connect":
-                        if (method == "POST"){
-                            _logger.LogInformation("Received connect request");
-                            await HandleConnectAsync(request, response);
-                        }
-                        else
-                            SendMethodNotAllowed(response);
-                        break;
-                        
-                    case "/api/disconnect":
-                        if (method == "POST"){
-                            _logger.LogInformation("Received disconnect request");
-                            await HandleDisconnectAsync(request, response);
-                        }
-                        else
-                            SendMethodNotAllowed(response);
-                        break;
-                        
-                    // Asset endpoints
-                    case "/api/assets":
-                        if (method == "GET")
-                            await HandleGetAssetsAsync(request, response);
-                        else
-                            SendMethodNotAllowed(response);
-                        break;
-                        
-                    default:
-                        // Check if the path matches /api/assets/{key}
-                        if (path.StartsWith("/api/assets/") && method == "GET")
-                        {
-                            var key = path.Substring("/api/assets/".Length);
-                            if (!string.IsNullOrEmpty(key))
-                            {
-                                await HandleGetAssetByKeyAsync(request, response, key);
-                                break;
-                            }
-                        }
-                        // Check if the path matches /api/execution/{executionId}/status
-                        else if (path.StartsWith("/api/execution/") && path.EndsWith("/status") && method == "POST")
-                        {
-                            var pathParts = path.Split('/');
-                            if (pathParts.Length >= 4)
-                            {
-                                var executionId = pathParts[3];
-                                if (!string.IsNullOrEmpty(executionId))
-                                {
-                                    await HandleExecutionStatusUpdateAsync(request, response, executionId);
-                                    break;
-                                }
-                            }
-                        }
-                        // Check if the path matches /api/status (general status update)
-                        else if (path == "/api/status" && method == "POST")
-                        {
-                            await HandleStatusUpdateAsync(request, response);
-                            break;
-                        }
-                        
-                        SendNotFound(response);
-                        break;
-                }
+                await RouteRequestAsync(request, response, path, method);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing API request");
-                
+
                 try
                 {
                     // Send error response
@@ -251,6 +172,141 @@ namespace OpenAutomate.BotAgent.Service.Services
                     // Ignore failures when closing the response
                 }
             }
+        }
+
+        /// <summary>
+        /// Routes the request to the appropriate handler based on path and method
+        /// </summary>
+        private async Task RouteRequestAsync(HttpListenerRequest request, HttpListenerResponse response, string path, string method)
+        {
+            switch (path)
+            {
+                case "/api/health":
+                    await HandleHealthRequestAsync(request, response);
+                    break;
+
+                case "/api/status":
+                    await HandleStatusRequestAsync(request, response, method);
+                    break;
+
+                case "/api/config":
+                    await HandleConfigRequestAsync(request, response, method);
+                    break;
+
+                case "/api/connect":
+                    await HandleConnectionRequestAsync(request, response, method, isConnect: true);
+                    break;
+
+                case "/api/disconnect":
+                    await HandleConnectionRequestAsync(request, response, method, isConnect: false);
+                    break;
+
+                case "/api/assets":
+                    await HandleAssetRequestAsync(request, response, method);
+                    break;
+
+                default:
+                    await HandleDynamicRouteAsync(request, response, path, method);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Handles health check requests
+        /// </summary>
+        private async Task HandleHealthRequestAsync(HttpListenerRequest request, HttpListenerResponse response)
+        {
+            await HandleHealthCheckAsync(request, response);
+        }
+
+        /// <summary>
+        /// Handles status requests with method validation
+        /// </summary>
+        private async Task HandleStatusRequestAsync(HttpListenerRequest request, HttpListenerResponse response, string method)
+        {
+            if (method == "GET")
+                await HandleStatusAsync(request, response);
+            else if (method == "POST")
+                await HandleStatusUpdateAsync(request, response);
+            else
+                SendMethodNotAllowed(response);
+        }
+
+        /// <summary>
+        /// Handles configuration requests with method validation
+        /// </summary>
+        private async Task HandleConfigRequestAsync(HttpListenerRequest request, HttpListenerResponse response, string method)
+        {
+            if (method == "GET")
+                await HandleGetConfigAsync(request, response);
+            else if (method == "POST")
+                await HandleUpdateConfigAsync(request, response);
+            else
+                SendMethodNotAllowed(response);
+        }
+
+        /// <summary>
+        /// Handles connection/disconnection requests
+        /// </summary>
+        private async Task HandleConnectionRequestAsync(HttpListenerRequest request, HttpListenerResponse response, string method, bool isConnect)
+        {
+            if (method == "POST")
+            {
+                _logger.LogInformation("Received {Action} request", isConnect ? "connect" : "disconnect");
+                if (isConnect)
+                    await HandleConnectAsync(request, response);
+                else
+                    await HandleDisconnectAsync(request, response);
+            }
+            else
+            {
+                SendMethodNotAllowed(response);
+            }
+        }
+
+        /// <summary>
+        /// Handles asset requests with method validation
+        /// </summary>
+        private async Task HandleAssetRequestAsync(HttpListenerRequest request, HttpListenerResponse response, string method)
+        {
+            if (method == "GET")
+                await HandleGetAssetsAsync(request, response);
+            else
+                SendMethodNotAllowed(response);
+        }
+
+        /// <summary>
+        /// Handles dynamic routes that require path parsing
+        /// </summary>
+        private async Task HandleDynamicRouteAsync(HttpListenerRequest request, HttpListenerResponse response, string path, string method)
+        {
+            // Check if the path matches /api/assets/{key}
+            if (path.StartsWith("/api/assets/") && method == "GET")
+            {
+                var key = path.Substring("/api/assets/".Length);
+                if (!string.IsNullOrEmpty(key))
+                {
+                    await HandleGetAssetByKeyAsync(request, response, key);
+                    return;
+                }
+            }
+
+            // Check if the path matches /api/execution/{executionId}/status
+            if (path.StartsWith("/api/execution/") && path.EndsWith("/status") && method == "POST")
+            {
+                var pathParts = path.Split('/');
+                if (pathParts.Length >= 4)
+                {
+                    var executionId = pathParts[3];
+                    if (!string.IsNullOrEmpty(executionId))
+                    {
+                        await HandleExecutionStatusUpdateAsync(request, response, executionId);
+                        return;
+                    }
+                }
+            }
+
+            SendNotFound(response);
         }
         
         #region Request Handlers

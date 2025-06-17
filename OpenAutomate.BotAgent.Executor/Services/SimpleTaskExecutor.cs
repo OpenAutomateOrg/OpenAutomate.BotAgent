@@ -244,20 +244,7 @@ namespace OpenAutomate.BotAgent.Executor.Services
             }
         }
 
-        private void ForceGarbageCollection()
-        {
-            try
-            {
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                GC.Collect();
-                _logger.LogDebug("Forced garbage collection completed");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error during forced garbage collection");
-            }
-        }
+
 
         private BotTask GetNextPendingTask()
         {

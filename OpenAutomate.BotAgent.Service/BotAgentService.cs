@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using OpenAutomate.BotAgent.Service.Core;
@@ -22,6 +23,7 @@ namespace OpenAutomate.BotAgent.Service
         private readonly IMachineKeyManager _machineKeyManager;
         private readonly IConfigurationService _configService;
         private SignalRBroadcaster _signalRBroadcaster;
+        private ILoggerFactory _loggerFactory;
 
         /// <summary>
         /// Initializes a new instance of the BotAgentService class
@@ -109,6 +111,9 @@ namespace OpenAutomate.BotAgent.Service
             {
                 // Clean up
                 await _apiServer.StopAsync();
+                
+                _loggerFactory?.Dispose();
+                
                 _logger.LogInformation("Bot Agent Service stopped");
             }
         }
@@ -122,18 +127,16 @@ namespace OpenAutomate.BotAgent.Service
             {
                 _logger.LogInformation("Initializing SignalR broadcaster for server communication");
                 
-                // Create a logger specifically for SignalRBroadcaster
-                var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-                var signalRLogger = loggerFactory.CreateLogger<SignalRBroadcaster>();
+                _loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+                var signalRLogger = _loggerFactory.CreateLogger<SignalRBroadcaster>();
                 
-                // Create SignalRBroadcaster directly without local hub dependencies
                 _signalRBroadcaster = new SignalRBroadcaster(_serverCommunication, signalRLogger);
                 
-                // Inject the SignalRBroadcaster into the ExecutionManager
-                if (_executionManager is ExecutionManager execManager)
+                if (!TryInjectSignalRBroadcaster())
                 {
-                    execManager.SetSignalRBroadcaster(_signalRBroadcaster);
-                    _logger.LogInformation("SignalRBroadcaster injected into ExecutionManager");
+                    _logger.LogWarning("Failed to inject SignalRBroadcaster into ExecutionManager. " +
+                                     "ExecutionManager implementation does not support SignalR broadcasting. " +
+                                     "Type: {ExecutionManagerType}", _executionManager.GetType().Name);
                 }
                 
                 _logger.LogInformation("SignalR broadcaster initialized successfully");
@@ -143,6 +146,33 @@ namespace OpenAutomate.BotAgent.Service
                 _logger.LogError(ex, "Failed to initialize SignalR broadcaster");
                 throw;
             }
+        }
+        
+        private bool TryInjectSignalRBroadcaster()
+        {
+            var setSignalRMethod = _executionManager.GetType().GetMethod("SetSignalRBroadcaster");
+            if (setSignalRMethod != null)
+            {
+                try
+                {
+                    setSignalRMethod.Invoke(_executionManager, new object[] { _signalRBroadcaster });
+                    _logger.LogInformation("SignalRBroadcaster injected into ExecutionManager via reflection");
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to inject SignalRBroadcaster via reflection");
+                }
+            }
+            
+            if (_executionManager is ExecutionManager execManager)
+            {
+                execManager.SetSignalRBroadcaster(_signalRBroadcaster);
+                _logger.LogInformation("SignalRBroadcaster injected into ExecutionManager via casting");
+                return true;
+            }
+            
+            return false;
         }
     }
 } 
