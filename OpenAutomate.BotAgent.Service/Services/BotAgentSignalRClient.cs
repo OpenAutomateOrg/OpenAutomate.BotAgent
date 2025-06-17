@@ -286,65 +286,21 @@ namespace OpenAutomate.BotAgent.Service.Services
             try
             {
                 _logger.LogInformation("Received command: {Command} with payload: {Payload}", command, JsonSerializer.Serialize(payload));
-                
+
                 switch (command)
                 {
                     case "ExecutePackage":
-                        // Extract executionId for deduplication
-                        string executionId = null;
-                        try
-                        {
-                            var payloadJson = JsonSerializer.Serialize(payload);
-                            var payloadDict = JsonSerializer.Deserialize<Dictionary<string, object>>(payloadJson);
-                            if (payloadDict.TryGetValue("executionId", out var execIdObj))
-                            {
-                                executionId = execIdObj.ToString();
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Failed to extract executionId from payload for deduplication");
-                        }
-                        
-                        // Simple deduplication check
-                        if (!string.IsNullOrEmpty(executionId))
-                        {
-                            lock (_executionLock)
-                            {
-                                if (_processedExecutionIds.Contains(executionId))
-                                {
-                                    _logger.LogWarning("Duplicate ExecutePackage command received for executionId: {ExecutionId}. Ignoring.", executionId);
-                                    return;
-                                }
-                                _processedExecutionIds.Add(executionId);
-                                
-                                // Clean up old entries to prevent memory buildup (keep only last 100)
-                                if (_processedExecutionIds.Count > 100)
-                                {
-                                    var oldestEntries = _processedExecutionIds.Take(50).ToList();
-                                    foreach (var entry in oldestEntries)
-                                    {
-                                        _processedExecutionIds.Remove(entry);
-                                    }
-                                }
-                            }
-                        }
-                        
-                        _logger.LogInformation("Processing ExecutePackage command for executionId: {ExecutionId}", executionId ?? "unknown");
-                        await _executionManager.StartExecutionAsync(payload);
+                        await ProcessExecutePackageCommandAsync(payload);
                         break;
-                        
+
                     case "CancelExecution":
-                        var cancelExecutionId = payload.ToString();
-                        _logger.LogInformation("Processing CancelExecution command for executionId: {ExecutionId}", cancelExecutionId);
-                        await _executionManager.CancelExecutionAsync(cancelExecutionId);
+                        await ProcessCancelExecutionCommandAsync(payload);
                         break;
-                        
+
                     case "Heartbeat":
-                        _logger.LogDebug("Processing Heartbeat command");
-                        await SendStatusUpdateAsync("Ready");
+                        await ProcessHeartbeatCommandAsync();
                         break;
-                        
+
                     default:
                         _logger.LogWarning("Unknown command received: {Command}", command);
                         break;
@@ -353,6 +309,96 @@ namespace OpenAutomate.BotAgent.Service.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error handling command: {Command}", command);
+            }
+        }
+
+        /// <summary>
+        /// Processes the ExecutePackage command with deduplication
+        /// </summary>
+        private async Task ProcessExecutePackageCommandAsync(object payload)
+        {
+            // Extract executionId for deduplication
+            string executionId = ExtractExecutionIdFromPayload(payload);
+
+            // Check for duplicate execution
+            if (IsDuplicateExecution(executionId))
+            {
+                _logger.LogWarning("Duplicate ExecutePackage command received for executionId: {ExecutionId}. Ignoring.", executionId);
+                return;
+            }
+
+            _logger.LogInformation("Processing ExecutePackage command for executionId: {ExecutionId}", executionId ?? "unknown");
+            await _executionManager.StartExecutionAsync(payload);
+        }
+
+        /// <summary>
+        /// Processes the CancelExecution command
+        /// </summary>
+        private async Task ProcessCancelExecutionCommandAsync(object payload)
+        {
+            var cancelExecutionId = payload.ToString();
+            _logger.LogInformation("Processing CancelExecution command for executionId: {ExecutionId}", cancelExecutionId);
+            await _executionManager.CancelExecutionAsync(cancelExecutionId);
+        }
+
+        /// <summary>
+        /// Processes the Heartbeat command
+        /// </summary>
+        private async Task ProcessHeartbeatCommandAsync()
+        {
+            _logger.LogDebug("Processing Heartbeat command");
+            await SendStatusUpdateAsync("Ready");
+        }
+
+        /// <summary>
+        /// Extracts the execution ID from the payload for deduplication
+        /// </summary>
+        private string ExtractExecutionIdFromPayload(object payload)
+        {
+            try
+            {
+                var payloadJson = JsonSerializer.Serialize(payload);
+                var payloadDict = JsonSerializer.Deserialize<Dictionary<string, object>>(payloadJson);
+                if (payloadDict.TryGetValue("executionId", out var execIdObj))
+                {
+                    return execIdObj.ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to extract executionId from payload for deduplication");
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Checks if the execution is a duplicate and adds it to the processed list if not
+        /// </summary>
+        private bool IsDuplicateExecution(string executionId)
+        {
+            if (string.IsNullOrEmpty(executionId))
+                return false;
+
+            lock (_executionLock)
+            {
+                if (_processedExecutionIds.Contains(executionId))
+                {
+                    return true;
+                }
+
+                _processedExecutionIds.Add(executionId);
+
+                // Clean up old entries to prevent memory buildup (keep only last 100)
+                if (_processedExecutionIds.Count > 100)
+                {
+                    var oldestEntries = _processedExecutionIds.Take(50).ToList();
+                    foreach (var entry in oldestEntries)
+                    {
+                        _processedExecutionIds.Remove(entry);
+                    }
+                }
+
+                return false;
             }
         }
         

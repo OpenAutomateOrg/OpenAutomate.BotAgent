@@ -64,18 +64,6 @@ namespace OpenAutomate.BotAgent.Service.Services
                 {
                     _logger.LogWarning("High memory usage detected - Working Set: {WorkingSetMB}MB (threshold: {ThresholdMB}MB)",
                         workingSetMB, _memoryThresholdMB);
-
-                    // Force garbage collection if memory is high
-                    _logger.LogInformation("Forcing garbage collection due to high memory usage");
-                    GC.Collect();
-                    GC.WaitForPendingFinalizers();
-                    GC.Collect();
-
-                    // Log memory after GC
-                    await Task.Delay(1000); // Wait for GC to complete
-                    var newWorkingSetMB = Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024;
-                    _logger.LogInformation("Memory after GC - Working Set: {NewWorkingSetMB}MB (reduced by {ReducedMB}MB)",
-                        newWorkingSetMB, workingSetMB - newWorkingSetMB);
                 }
             }
             catch (Exception ex)

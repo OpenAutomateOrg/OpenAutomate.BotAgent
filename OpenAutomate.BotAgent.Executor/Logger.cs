@@ -2,6 +2,7 @@
 using Serilog.Events;
 using System;
 using System.IO;
+using System.Linq;
 
 namespace OpenAutomate.BotAgent.Executor
 {
@@ -50,6 +51,36 @@ namespace OpenAutomate.BotAgent.Executor
                 .CreateLogger();
 
             return _logger;
+        }
+
+        /// <summary>
+        /// Gets the log file path for a given execution ID
+        /// </summary>
+        /// <param name="executionId">The execution ID</param>
+        /// <returns>The full path to the log file</returns>
+        public static string GetLogFilePath(string executionId = null)
+        {
+            var logDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "OpenAutomate", "BotAgent", "Logs");
+
+            if (string.IsNullOrEmpty(executionId))
+            {
+                return Path.Combine(logDirectory, "executor-.log");
+            }
+
+            // Look for the actual log file with timestamp
+            var pattern = $"execution-{executionId}-*.log";
+            var files = Directory.GetFiles(logDirectory, pattern);
+            
+            if (files.Length > 0)
+            {
+                // Return the most recent file if multiple exist
+                return files.OrderByDescending(f => File.GetLastWriteTime(f)).First();
+            }
+
+            // Fallback to the expected pattern without timestamp
+            return Path.Combine(logDirectory, $"execution-{executionId}-.log");
         }
 
         /// <summary>
