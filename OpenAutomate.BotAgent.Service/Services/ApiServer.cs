@@ -371,10 +371,11 @@ namespace OpenAutomate.BotAgent.Service.Services
                 // Get the current config to preserve values not included in the update
                 var currentConfig = _configService.GetConfiguration();
                 
-                // Update the configuration
+                // Update the configuration while preserving cached values
                 var updatedConfig = new BotAgentConfig
                 {
-                    ServerUrl = newConfig.ServerUrl ?? currentConfig.ServerUrl,
+                    OrchestratorUrl = newConfig.OrchestratorUrl ?? currentConfig.OrchestratorUrl,
+                    BackendApiUrl = newConfig.BackendApiUrl ?? currentConfig.BackendApiUrl, // Preserve cached backend URL
                     MachineKey = newConfig.MachineKey ?? currentConfig.MachineKey,
                     AutoStart = newConfig.AutoStart,
                     LogLevel = newConfig.LogLevel ?? currentConfig.LogLevel,

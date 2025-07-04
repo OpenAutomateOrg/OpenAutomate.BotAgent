@@ -9,24 +9,45 @@ namespace OpenAutomate.BotAgent.UI.Models
     /// </summary>
     public class ConfigurationModel : INotifyPropertyChanged
     {
-        private string _serverUrl = string.Empty;
+        private string _orchestratorUrl = string.Empty;
         private string _machineKey = string.Empty;
         private string _machineName;
         private bool _isConnected;
         private string _loggingLevel;
 
         /// <summary>
-        /// Server URL including tenant slug (e.g., http://open-bot.live/)
+        /// Orchestrator URL including tenant slug (e.g., https://cloud.openautomate.me/my-tenant)
+        /// The agent will use this URL to discover the backend API and connect directly to it.
         /// </summary>
+        public string OrchestratorUrl
+        {
+            get => _orchestratorUrl;
+            set
+            {
+                if (_orchestratorUrl != value)
+                {
+                    _orchestratorUrl = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// DEPRECATED: Use OrchestratorUrl instead. Maintained for backward compatibility.
+        /// This property should not be used in the UI - it's only for backward compatibility.
+        /// </summary>
+        [Obsolete("Use OrchestratorUrl instead. This property is maintained for backward compatibility.")]
+        [System.Text.Json.Serialization.JsonIgnore] // Don't serialize this in UI
         public string ServerUrl
         {
-            get => _serverUrl;
-            set 
-            { 
-                if (_serverUrl != value)
+            get => _orchestratorUrl;
+            set
+            {
+                if (_orchestratorUrl != value)
                 {
-                    _serverUrl = value;
+                    _orchestratorUrl = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(OrchestratorUrl));
                 }
             }
         }
