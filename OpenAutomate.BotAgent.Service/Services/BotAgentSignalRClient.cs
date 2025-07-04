@@ -8,6 +8,8 @@ using OpenAutomate.BotAgent.Service.Core;
 using Microsoft.AspNetCore.Http.Connections.Client;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Text.RegularExpressions;
 
 namespace OpenAutomate.BotAgent.Service.Services
 {
@@ -19,6 +21,7 @@ namespace OpenAutomate.BotAgent.Service.Services
         private readonly ILogger<BotAgentSignalRClient> _logger;
         private readonly IConfigurationService _configService;
         private readonly IExecutionManager _executionManager;
+        private readonly HttpClient _httpClient;
         private HubConnection _connection;
         private bool _isReconnecting = false;
         private CancellationTokenSource _reconnectCts = new CancellationTokenSource();
@@ -57,32 +60,68 @@ namespace OpenAutomate.BotAgent.Service.Services
             _logger = logger;
             _configService = configService;
             _executionManager = executionManager;
+            _httpClient = new HttpClient();
         }
         
         /// <summary>
-        /// Initializes the SignalR connection
+        /// Initializes the SignalR connection using the discovery mechanism
         /// </summary>
         public async Task InitializeAsync()
         {
             var config = _configService.GetConfiguration();
-            if (string.IsNullOrEmpty(config.MachineKey) || string.IsNullOrEmpty(config.ServerUrl))
+            if (string.IsNullOrEmpty(config.MachineKey) || string.IsNullOrEmpty(config.OrchestratorUrl))
             {
-                _logger.LogError("Cannot initialize SignalR connection: Missing machine key or server URL");
+                _logger.LogError("Cannot initialize SignalR connection: Missing machine key or orchestrator URL");
                 return;
             }
-            
-            var serverUrl = config.ServerUrl.TrimEnd('/');
-            
-            _connection = new HubConnectionBuilder()
-                .WithUrl($"{serverUrl}/hubs/botagent?machineKey={config.MachineKey}", options => 
+
+            try
+            {
+                // Parse the orchestrator URL to get base domain and tenant slug
+                var (baseDomain, tenantSlug) = ParseOrchestratorUrl(config.OrchestratorUrl);
+
+                // Get or discover the backend API URL
+                var apiUrl = config.BackendApiUrl;
+                if (string.IsNullOrEmpty(apiUrl))
                 {
-                    options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets | 
-                                         Microsoft.AspNetCore.Http.Connections.HttpTransportType.LongPolling;
-                    options.SkipNegotiation = false;
-                })
-                .WithAutomaticReconnect(new RetryPolicy())
-                .WithServerTimeout(TimeSpan.FromMinutes(2))
-                .Build();
+                    _logger.LogInformation("Backend API URL not cached, discovering from {BaseDomain}", baseDomain);
+                    apiUrl = await DiscoverApiUrlAsync(baseDomain);
+                    if (string.IsNullOrEmpty(apiUrl))
+                    {
+                        _logger.LogError("Failed to discover backend API URL from {BaseDomain}", baseDomain);
+                        return;
+                    }
+
+                    // Cache the discovered backend API URL
+                    config.BackendApiUrl = apiUrl;
+                    _configService.SaveConfiguration(config);
+                    _logger.LogInformation("Cached backend API URL: {ApiUrl}", apiUrl);
+                }
+                else
+                {
+                    _logger.LogInformation("Using cached backend API URL: {ApiUrl}", apiUrl);
+                }
+
+                // Construct the final SignalR hub URL
+                var hubUrl = $"{apiUrl.TrimEnd('/')}/{tenantSlug}/hubs/botagent";
+                _logger.LogInformation("Connecting to SignalR hub at {HubUrl}", hubUrl);
+
+                _connection = new HubConnectionBuilder()
+                    .WithUrl($"{hubUrl}?machineKey={config.MachineKey}", options =>
+                    {
+                        options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets |
+                                             Microsoft.AspNetCore.Http.Connections.HttpTransportType.LongPolling;
+                        options.SkipNegotiation = false;
+                    })
+                    .WithAutomaticReconnect(new RetryPolicy())
+                    .WithServerTimeout(TimeSpan.FromMinutes(2))
+                    .Build();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during SignalR connection initialization");
+                return;
+            }
             
             // Register command handler
             _connection.On<string, object>("ReceiveCommand", async (command, payload) => 
@@ -126,7 +165,102 @@ namespace OpenAutomate.BotAgent.Service.Services
             
             await ConnectAsync();
         }
-        
+
+        /// <summary>
+        /// Parses the orchestrator URL to extract base domain and tenant slug
+        /// </summary>
+        /// <param name="orchestratorUrl">The full orchestrator URL (e.g., https://cloud.openautomate.me/acme-corp)</param>
+        /// <returns>A tuple containing the base domain and tenant slug</returns>
+        private (string baseDomain, string tenantSlug) ParseOrchestratorUrl(string orchestratorUrl)
+        {
+            try
+            {
+                var uri = new Uri(orchestratorUrl.TrimEnd('/'));
+                var baseDomain = $"{uri.Scheme}://{uri.Host}";
+                if (!uri.IsDefaultPort)
+                {
+                    baseDomain += $":{uri.Port}";
+                }
+
+                var tenantSlug = uri.AbsolutePath.Trim('/');
+                if (string.IsNullOrEmpty(tenantSlug))
+                {
+                    throw new ArgumentException("Orchestrator URL must include a tenant slug (e.g., https://cloud.openautomate.me/tenant-name)");
+                }
+
+                _logger.LogDebug("Parsed orchestrator URL: BaseDomain={BaseDomain}, TenantSlug={TenantSlug}", baseDomain, tenantSlug);
+                return (baseDomain, tenantSlug);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse orchestrator URL: {OrchestratorUrl}", orchestratorUrl);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Discovers the backend API URL from the frontend discovery endpoint
+        /// </summary>
+        /// <param name="baseDomain">The base domain of the frontend (e.g., https://cloud.openautomate.me)</param>
+        /// <returns>The backend API URL</returns>
+        private async Task<string> DiscoverApiUrlAsync(string baseDomain)
+        {
+            const int maxRetries = 3;
+            const int baseDelayMs = 1000;
+
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                try
+                {
+                    var discoveryUrl = $"{baseDomain}/api/connection-info";
+                    _logger.LogDebug("Attempting to discover API URL from {DiscoveryUrl} (attempt {Attempt}/{MaxRetries})",
+                        discoveryUrl, attempt, maxRetries);
+
+                    using var response = await _httpClient.GetAsync(discoveryUrl);
+                    response.EnsureSuccessStatusCode();
+
+                    var content = await response.Content.ReadAsStringAsync();
+                    var discoveryResponse = JsonSerializer.Deserialize<DiscoveryResponse>(content, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    if (string.IsNullOrEmpty(discoveryResponse?.ApiUrl))
+                    {
+                        throw new InvalidOperationException("Discovery response did not contain a valid API URL");
+                    }
+
+                    _logger.LogInformation("Successfully discovered backend API URL: {ApiUrl}", discoveryResponse.ApiUrl);
+                    return discoveryResponse.ApiUrl;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to discover API URL (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
+
+                    if (attempt == maxRetries)
+                    {
+                        _logger.LogError("Failed to discover API URL after {MaxRetries} attempts", maxRetries);
+                        throw;
+                    }
+
+                    // Exponential backoff with jitter
+                    var delay = baseDelayMs * (int)Math.Pow(2, attempt - 1);
+                    var jitter = _jitterRandom.Next(0, delay / 4);
+                    await Task.Delay(delay + jitter);
+                }
+            }
+
+            return null; // This should never be reached due to the throw above
+        }
+
+        /// <summary>
+        /// Response model for the discovery endpoint
+        /// </summary>
+        private sealed class DiscoveryResponse
+        {
+            public string ApiUrl { get; set; } = string.Empty;
+        }
+
         /// <summary>
         /// Connects to the SignalR hub
         /// </summary>
@@ -497,6 +631,7 @@ namespace OpenAutomate.BotAgent.Service.Services
                 _connection?.DisposeAsync().AsTask().GetAwaiter().GetResult();
                 _reconnectCts.Dispose();
                 _connectionLock.Dispose();
+                _httpClient.Dispose();
             }
             catch (Exception ex)
             {

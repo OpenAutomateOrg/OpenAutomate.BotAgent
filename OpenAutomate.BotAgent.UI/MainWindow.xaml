@@ -338,13 +338,20 @@
                                 <controls:CredentialTextBox Value="{Binding Config.MachineKey, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,16" />
                             </StackPanel>
 
-                            <!-- Center URL -->
+                            <!-- Orchestrator URL -->
                             <StackPanel Margin="0,0,0,20">
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                    <TextBlock Text="Center URL" FontWeight="Medium" Foreground="{StaticResource TextColor}" FontSize="14" FontFamily="Segoe UI" />
+                                    <TextBlock Text="Orchestrator URL" FontWeight="Medium" Foreground="{StaticResource TextColor}" FontSize="14" FontFamily="Segoe UI" />
                                     <TextBlock Text=" *" Foreground="{StaticResource PrimaryColor}" FontWeight="SemiBold" />
                                 </StackPanel>
-                                <TextBox Style="{StaticResource FormTextBox}" Text="{Binding Config.ServerUrl, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBox Style="{StaticResource FormTextBox}"
+                                         Text="{Binding Config.OrchestratorUrl, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Enter the full orchestrator URL including your tenant (e.g., https://cloud.openautomate.me/my-tenant)" />
+                                <TextBlock Text="Example: https://cloud.openautomate.me/my-tenant"
+                                           FontSize="12"
+                                           Foreground="{StaticResource TextSecondaryColor}"
+                                           Margin="0,4,0,0"
+                                           FontStyle="Italic" />
                             </StackPanel>
 
 

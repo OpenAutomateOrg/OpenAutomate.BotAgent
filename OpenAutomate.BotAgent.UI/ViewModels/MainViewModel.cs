@@ -160,11 +160,11 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
                 // First try to load from config file
                 var fileConfig = await _configManager.LoadConfigurationAsync();
                 
-                if (!string.IsNullOrEmpty(fileConfig.ServerUrl) && !string.IsNullOrEmpty(fileConfig.MachineKey))
+                if (!string.IsNullOrEmpty(fileConfig.OrchestratorUrl) && !string.IsNullOrEmpty(fileConfig.MachineKey))
                 {
                     // If we have basic config, use it
                     Config = fileConfig;
-                    LoggingService.Information("Loaded configuration from file, ServerUrl: {ServerUrl}", fileConfig.ServerUrl);
+                    LoggingService.Information("Loaded configuration from file, OrchestratorUrl: {OrchestratorUrl}", fileConfig.OrchestratorUrl);
                     
                     // Now try to get the service config (for latest connection status)
                     try
@@ -188,7 +188,7 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
                     {
                         var serviceConfig = await _apiClient.GetConfigAsync();
                         
-                        if (!string.IsNullOrEmpty(serviceConfig.ServerUrl) && !string.IsNullOrEmpty(serviceConfig.MachineKey))
+                        if (!string.IsNullOrEmpty(serviceConfig.OrchestratorUrl) && !string.IsNullOrEmpty(serviceConfig.MachineKey))
                         {
                             Config = serviceConfig;
                             LoggingService.Information("Loaded configuration from service");
@@ -198,7 +198,7 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
                             // Service returned empty config, use default with just machine name set
                             LoggingService.Information("Service returned empty configuration, using default with just machine name");
                             Config.MachineName = Environment.MachineName;
-                            Config.ServerUrl = string.Empty;
+                            Config.OrchestratorUrl = string.Empty;
                             Config.MachineKey = string.Empty;
                             Config.IsConnected = false;
                             Config.LoggingLevel = "INFO";
@@ -209,7 +209,7 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
                         LoggingService.Warning(ex.Message, "Failed to get configuration from service, using default");
                         // Use default with empty fields to allow user to enter values
                         Config.MachineName = Environment.MachineName;
-                        Config.ServerUrl = string.Empty;
+                        Config.OrchestratorUrl = string.Empty;
                         Config.MachineKey = string.Empty;
                         Config.IsConnected = false;
                         Config.LoggingLevel = "INFO";
@@ -287,7 +287,7 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
         {
             IsBusy = true;
             StatusMessage = "Connecting to server...";
-            LoggingService.Information("Connecting to server with URL: {ServerUrl}", Config.ServerUrl);
+            LoggingService.Information("Connecting to orchestrator with URL: {OrchestratorUrl}", Config.OrchestratorUrl);
             
             try
             {
@@ -540,8 +540,8 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
         /// </summary>
         private bool CanSave()
         {
-            return !IsBusy && 
-                  !string.IsNullOrWhiteSpace(Config.ServerUrl) && 
+            return !IsBusy &&
+                  !string.IsNullOrWhiteSpace(Config.OrchestratorUrl) &&
                   !string.IsNullOrWhiteSpace(Config.MachineKey) &&
                   !string.IsNullOrWhiteSpace(Config.MachineName);
         }
@@ -551,13 +551,13 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
         /// </summary>
         private bool CanConnect()
         {
-            var canConnect = !IsBusy && 
-                  !IsConnected && 
-                  !string.IsNullOrWhiteSpace(Config.ServerUrl) && 
+            var canConnect = !IsBusy &&
+                  !IsConnected &&
+                  !string.IsNullOrWhiteSpace(Config.OrchestratorUrl) &&
                   !string.IsNullOrWhiteSpace(Config.MachineKey) &&
                   !string.IsNullOrWhiteSpace(Config.MachineName);
-                  
-            LoggingService.Debug($"CanConnect check: {canConnect}, ServerUrl: {!string.IsNullOrWhiteSpace(Config.ServerUrl)}, MachineKey: {!string.IsNullOrWhiteSpace(Config.MachineKey)}");
+
+            LoggingService.Debug($"CanConnect check: {canConnect}, OrchestratorUrl: {!string.IsNullOrWhiteSpace(Config.OrchestratorUrl)}, MachineKey: {!string.IsNullOrWhiteSpace(Config.MachineKey)}");
             return canConnect;
         }
         

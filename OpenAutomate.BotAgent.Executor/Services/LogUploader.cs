@@ -33,8 +33,8 @@ namespace OpenAutomate.BotAgent.Executor.Services
         /// <summary>
         /// Uploads a log file to the backend API
         /// </summary>
-        /// <param name="apiBaseUrl">Base URL of the backend API (already includes tenant slug)</param>
-        /// <param name="tenantSlug">Tenant slug for the API endpoint (for reference, but not used in URL construction)</param>
+        /// <param name="apiBaseUrl">Base URL (could be frontend or backend URL)</param>
+        /// <param name="tenantSlug">Tenant slug for the API endpoint</param>
         /// <param name="executionId">Execution ID</param>
         /// <param name="logFilePath">Path to the log file to upload</param>
         /// <param name="machineKey">Machine key for authentication</param>
@@ -48,8 +48,9 @@ namespace OpenAutomate.BotAgent.Executor.Services
         {
             try
             {
-                // apiBaseUrl already includes the tenant slug, so we don't add it again
-                var apiUrl = $"{apiBaseUrl.TrimEnd('/')}/api/executions/{executionId}/logs";
+                // Determine the correct backend API URL
+                var backendApiUrl = await GetBackendApiUrlAsync(apiBaseUrl, tenantSlug);
+                var apiUrl = $"{backendApiUrl.TrimEnd('/')}/{tenantSlug}/api/executions/{executionId}/logs";
                 _logger.LogInformation(LogMessages.UploadStarted, executionId, apiUrl);
 
                 // Validate log file exists
@@ -163,6 +164,69 @@ namespace OpenAutomate.BotAgent.Executor.Services
         }
 
         /// <summary>
+        /// Gets the backend API URL, discovering it if the provided URL is a frontend URL
+        /// </summary>
+        private async Task<string> GetBackendApiUrlAsync(string apiBaseUrl, string tenantSlug)
+        {
+            try
+            {
+                // If the URL already looks like a backend URL (no tenant slug in path), use it directly
+                if (!apiBaseUrl.Contains($"/{tenantSlug}"))
+                {
+                    return apiBaseUrl;
+                }
+
+                // This is likely a frontend URL, discover the backend URL
+                _logger.LogDebug("Discovering backend API URL from frontend URL: {FrontendUrl}", apiBaseUrl);
+
+                // Extract base domain from frontend URL
+                var uri = new Uri(apiBaseUrl);
+                var baseDomain = $"{uri.Scheme}://{uri.Host}";
+                if (!uri.IsDefaultPort)
+                {
+                    baseDomain += $":{uri.Port}";
+                }
+
+                // Try to discover backend URL from the frontend
+                using var httpClient = new HttpClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(10);
+
+                var discoveryUrl = $"{baseDomain}/api/discovery";
+                var response = await httpClient.GetAsync(discoveryUrl);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    var discoveryData = System.Text.Json.JsonSerializer.Deserialize<DiscoveryResponse>(content);
+
+                    if (!string.IsNullOrEmpty(discoveryData?.ApiUrl))
+                    {
+                        _logger.LogDebug("Discovered backend API URL: {BackendUrl}", discoveryData.ApiUrl);
+                        return discoveryData.ApiUrl;
+                    }
+                }
+
+                // Fallback: assume backend is on port 5252 if discovery fails
+                var fallbackUrl = baseDomain.Replace(":3001", ":5252");
+                _logger.LogWarning("Backend discovery failed, using fallback URL: {FallbackUrl}", fallbackUrl);
+                return fallbackUrl;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error discovering backend API URL, using original URL: {OriginalUrl}", apiBaseUrl);
+                return apiBaseUrl;
+            }
+        }
+
+        /// <summary>
+        /// Discovery response model
+        /// </summary>
+        private class DiscoveryResponse
+        {
+            public string ApiUrl { get; set; }
+        }
+
+        /// <summary>
         /// Disposes the HTTP client
         /// </summary>
         public void Dispose()
@@ -170,4 +234,4 @@ namespace OpenAutomate.BotAgent.Executor.Services
             // No longer need to dispose _httpClient since we create fresh instances
         }
     }
-} 
+}

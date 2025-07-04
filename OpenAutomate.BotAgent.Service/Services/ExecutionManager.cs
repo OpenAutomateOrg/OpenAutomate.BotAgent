@@ -240,9 +240,11 @@ namespace OpenAutomate.BotAgent.Service.Services
                     arguments += $" --tenant-slug \"{execution.TenantSlug}\"";
                 }
                 
-                if (!string.IsNullOrEmpty(config.ServerUrl))
+                // Use cached backend API URL for log uploads, fallback to orchestrator URL if not cached
+                var apiBaseUrl = config.BackendApiUrl ?? config.OrchestratorUrl;
+                if (!string.IsNullOrEmpty(apiBaseUrl))
                 {
-                    arguments += $" --api-base-url \"{config.ServerUrl}\"";
+                    arguments += $" --api-base-url \"{apiBaseUrl}\"";
                 }
                 
                 if (!string.IsNullOrEmpty(machineKey))
