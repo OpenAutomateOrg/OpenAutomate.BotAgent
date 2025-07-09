@@ -7,8 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenAutomate.BotAgent.Servi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenAutomate.BotAgent.UI", "OpenAutomate.BotAgent.UI\OpenAutomate.BotAgent.UI.csproj", "{405D043C-F8DB-4B82-9D41-2EF8A8B8BDEF}"
 EndProject
-Project("{930C7802-8A8C-48F9-8165-68863BCCD9DD}") = "OpenAutomate.BotAgent.Installer", "OpenAutomate.BotAgent.Installer\OpenAutomate.BotAgent.Installer.wixproj", "{177D6D72-FC65-49A2-A1F8-73EFCBE8C55F}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenAutomate.BotAgent.Executor", "OpenAutomate.BotAgent.Executor\OpenAutomate.BotAgent.Executor.csproj", "{BF916EB6-3F93-4CC8-B141-D79BDD535954}"
 EndProject
 Global
@@ -35,14 +33,6 @@ Global
 		{405D043C-F8DB-4B82-9D41-2EF8A8B8BDEF}.Release|Any CPU.Build.0 = Release|Any CPU
 		{405D043C-F8DB-4B82-9D41-2EF8A8B8BDEF}.Release|x86.ActiveCfg = Release|Any CPU
 		{405D043C-F8DB-4B82-9D41-2EF8A8B8BDEF}.Release|x86.Build.0 = Release|Any CPU
-		{177D6D72-FC65-49A2-A1F8-73EFCBE8C55F}.Debug|Any CPU.ActiveCfg = Debug|x86
-		{177D6D72-FC65-49A2-A1F8-73EFCBE8C55F}.Debug|Any CPU.Build.0 = Debug|x86
-		{177D6D72-FC65-49A2-A1F8-73EFCBE8C55F}.Debug|x86.ActiveCfg = Debug|x86
-		{177D6D72-FC65-49A2-A1F8-73EFCBE8C55F}.Debug|x86.Build.0 = Debug|x86
-		{177D6D72-FC65-49A2-A1F8-73EFCBE8C55F}.Release|Any CPU.ActiveCfg = Release|x86
-		{177D6D72-FC65-49A2-A1F8-73EFCBE8C55F}.Release|Any CPU.Build.0 = Release|x86
-		{177D6D72-FC65-49A2-A1F8-73EFCBE8C55F}.Release|x86.ActiveCfg = Release|x86
-		{177D6D72-FC65-49A2-A1F8-73EFCBE8C55F}.Release|x86.Build.0 = Release|x86
 		{BF916EB6-3F93-4CC8-B141-D79BDD535954}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{BF916EB6-3F93-4CC8-B141-D79BDD535954}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BF916EB6-3F93-4CC8-B141-D79BDD535954}.Debug|x86.ActiveCfg = Debug|Any CPU

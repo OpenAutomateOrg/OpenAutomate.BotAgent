@@ -19,7 +19,6 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
         private readonly ConfigurationManager _configManager;
         private readonly ConnectionMonitor _connectionMonitor;
         private readonly Dispatcher _dispatcher;
-        private readonly SignalRClientService _signalRClient;
         
         private ConfigurationModel _configModel;
         private bool _isBusy;
@@ -32,7 +31,6 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
             _configManager = new ConfigurationManager();
             _connectionMonitor = new ConnectionMonitor(_apiClient);
             _dispatcher = Dispatcher.CurrentDispatcher;
-            _signalRClient = new SignalRClientService();
             
             _configModel = new ConfigurationModel 
             { 
@@ -49,7 +47,6 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
             
             // Subscribe to connection status changes
             _connectionMonitor.ConnectionStatusChanged += OnConnectionStatusChanged;
-            _signalRClient.ConnectionStatusChanged += OnSignalRConnectionStatusChanged;
             
             LoggingService.Information("MainViewModel initialized");
             
@@ -163,11 +160,11 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
                 // First try to load from config file
                 var fileConfig = await _configManager.LoadConfigurationAsync();
                 
-                if (!string.IsNullOrEmpty(fileConfig.ServerUrl) && !string.IsNullOrEmpty(fileConfig.MachineKey))
+                if (!string.IsNullOrEmpty(fileConfig.OrchestratorUrl) && !string.IsNullOrEmpty(fileConfig.MachineKey))
                 {
                     // If we have basic config, use it
                     Config = fileConfig;
-                    LoggingService.Information("Loaded configuration from file, ServerUrl: {ServerUrl}", fileConfig.ServerUrl);
+                    LoggingService.Information("Loaded configuration from file, OrchestratorUrl: {OrchestratorUrl}", fileConfig.OrchestratorUrl);
                     
                     // Now try to get the service config (for latest connection status)
                     try
@@ -191,7 +188,7 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
                     {
                         var serviceConfig = await _apiClient.GetConfigAsync();
                         
-                        if (!string.IsNullOrEmpty(serviceConfig.ServerUrl) && !string.IsNullOrEmpty(serviceConfig.MachineKey))
+                        if (!string.IsNullOrEmpty(serviceConfig.OrchestratorUrl) && !string.IsNullOrEmpty(serviceConfig.MachineKey))
                         {
                             Config = serviceConfig;
                             LoggingService.Information("Loaded configuration from service");
@@ -201,7 +198,7 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
                             // Service returned empty config, use default with just machine name set
                             LoggingService.Information("Service returned empty configuration, using default with just machine name");
                             Config.MachineName = Environment.MachineName;
-                            Config.ServerUrl = string.Empty;
+                            Config.OrchestratorUrl = string.Empty;
                             Config.MachineKey = string.Empty;
                             Config.IsConnected = false;
                             Config.LoggingLevel = "INFO";
@@ -212,7 +209,7 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
                         LoggingService.Warning(ex.Message, "Failed to get configuration from service, using default");
                         // Use default with empty fields to allow user to enter values
                         Config.MachineName = Environment.MachineName;
-                        Config.ServerUrl = string.Empty;
+                        Config.OrchestratorUrl = string.Empty;
                         Config.MachineKey = string.Empty;
                         Config.IsConnected = false;
                         Config.LoggingLevel = "INFO";
@@ -290,7 +287,7 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
         {
             IsBusy = true;
             StatusMessage = "Connecting to server...";
-            LoggingService.Information("Connecting to server with URL: {ServerUrl}", Config.ServerUrl);
+            LoggingService.Information("Connecting to orchestrator with URL: {OrchestratorUrl}", Config.OrchestratorUrl);
             
             try
             {
@@ -543,8 +540,8 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
         /// </summary>
         private bool CanSave()
         {
-            return !IsBusy && 
-                  !string.IsNullOrWhiteSpace(Config.ServerUrl) && 
+            return !IsBusy &&
+                  !string.IsNullOrWhiteSpace(Config.OrchestratorUrl) &&
                   !string.IsNullOrWhiteSpace(Config.MachineKey) &&
                   !string.IsNullOrWhiteSpace(Config.MachineName);
         }
@@ -554,13 +551,13 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
         /// </summary>
         private bool CanConnect()
         {
-            var canConnect = !IsBusy && 
-                  !IsConnected && 
-                  !string.IsNullOrWhiteSpace(Config.ServerUrl) && 
+            var canConnect = !IsBusy &&
+                  !IsConnected &&
+                  !string.IsNullOrWhiteSpace(Config.OrchestratorUrl) &&
                   !string.IsNullOrWhiteSpace(Config.MachineKey) &&
                   !string.IsNullOrWhiteSpace(Config.MachineName);
-                  
-            LoggingService.Debug($"CanConnect check: {canConnect}, ServerUrl: {!string.IsNullOrWhiteSpace(Config.ServerUrl)}, MachineKey: {!string.IsNullOrWhiteSpace(Config.MachineKey)}");
+
+            LoggingService.Debug($"CanConnect check: {canConnect}, OrchestratorUrl: {!string.IsNullOrWhiteSpace(Config.OrchestratorUrl)}, MachineKey: {!string.IsNullOrWhiteSpace(Config.MachineKey)}");
             return canConnect;
         }
         
@@ -590,99 +587,6 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-        
-        /// <summary>
-        /// Handler for SignalR connection status changes
-        /// </summary>
-        private void OnSignalRConnectionStatusChanged(bool isConnected)
-        {
-            // Dispatch to UI thread since this may come from a background thread
-            _dispatcher.Invoke(async () =>
-            {
-                LoggingService.Information("SignalR reported connection status change: {IsConnected}", 
-                    isConnected ? "Connected" : "Disconnected");
-                
-                // Instead of blindly trusting the SignalR status, verify with a direct API call
-                // This helps ensure we're showing the true connection state
-                try
-                {
-                    // Don't use the connection status cache
-                    _apiClient.ResetConnectionStatusCache();
-                    
-                    // Get fresh connection status from API
-                    var apiConnectedStatus = await _apiClient.GetConnectionStatusAsync();
-                    
-                    // If they don't match, log the discrepancy
-                    if (apiConnectedStatus != isConnected)
-                    {
-                        LoggingService.Warning("SignalR and API connection status mismatch. " + 
-                            "SignalR: {SignalRStatus}, API: {ApiStatus}. Using API status.",
-                            isConnected ? "Connected" : "Disconnected",
-                            apiConnectedStatus ? "Connected" : "Disconnected");
-                            
-                        // Trust the API status as the source of truth
-                        isConnected = apiConnectedStatus;
-                    }
-                    else
-                    {
-                        LoggingService.Debug("SignalR and API connection status match: {Status}",
-                            isConnected ? "Connected" : "Disconnected");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LoggingService.Error(ex, "Error verifying SignalR connection status with API");
-                    
-                    // If we can't verify with the API, be cautious and set to disconnected
-                    if (isConnected)
-                    {
-                        LoggingService.Warning("Unable to verify connected state with API, assuming disconnected");
-                        isConnected = false;
-                    }
-                }
-                
-                // Update UI with verified status
-                var oldConnected = Config.IsConnected;
-                
-                // Only update if the status has actually changed
-                if (oldConnected != isConnected)
-                {
-                    LoggingService.Information("Connection status changed via SignalR: {OldStatus} to {NewStatus}",
-                        oldConnected ? "Connected" : "Disconnected",
-                        isConnected ? "Connected" : "Disconnected");
-                    
-                    Config.IsConnected = isConnected;
-                    StatusMessage = isConnected ? "Connected to server" : "Disconnected from server";
-                    
-                    // Save configuration to persist the connection status
-                    try
-                    {
-                        await _configManager.SaveConfigurationAsync(Config);
-                    }
-                    catch (Exception ex)
-                    {
-                        LoggingService.Error(ex, "Failed to save connection status to configuration");
-                    }
-                    
-                    // Always refresh UI state after connection status changes
-                    RefreshConnectionState();
-                }
-                
-                // If connected, we can rely on real-time updates from SignalR,
-                // so we can stop the polling monitor
-                if (isConnected && _connectionMonitor != null)
-                {
-                    LoggingService.Information("Connected via SignalR, stopping polling monitor");
-                    _connectionMonitor.StopMonitoring();
-                }
-                else if (!isConnected && _connectionMonitor != null)
-                {
-                    // If disconnected, restart the polling monitor to detect reconnection
-                    LoggingService.Information("Disconnected from SignalR, starting polling monitor");
-                    _connectionMonitor.StartMonitoring();
-                }
-            });
         }
     }
     

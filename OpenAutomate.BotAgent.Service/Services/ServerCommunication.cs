@@ -161,6 +161,38 @@ namespace OpenAutomate.BotAgent.Service.Services
         }
         
         /// <summary>
+        /// Updates execution status on the server
+        /// </summary>
+        /// <param name="executionId">Execution ID</param>
+        /// <param name="status">Current status</param>
+        /// <param name="message">Optional status message</param>
+        public async Task UpdateExecutionStatusAsync(string executionId, string status, string message = null)
+        {
+            if (!IsConnected)
+            {
+                _logger.LogWarning("Cannot update execution status for {ExecutionId}: Not connected", executionId);
+                return;
+            }
+            
+            if (string.IsNullOrEmpty(executionId) || string.IsNullOrEmpty(status))
+            {
+                _logger.LogWarning("Invalid execution status update parameters: ExecutionId={ExecutionId}, Status={Status}", executionId, status);
+                return;
+            }
+            
+            try
+            {
+                _logger.LogDebug("Updating execution status for {ExecutionId} to {Status}", executionId, status);
+                await _signalRClient.SendExecutionStatusUpdateAsync(executionId, status, message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating execution status for {ExecutionId} to {Status}", executionId, status);
+                // Don't mark as disconnected for execution status failures as they might be transient
+            }
+        }
+        
+        /// <summary>
         /// Gets an asset from the server
         /// </summary>
         public async Task<string> GetAssetAsync(string key, string machineKey)
@@ -242,95 +274,15 @@ namespace OpenAutomate.BotAgent.Service.Services
         /// </summary>
         public async Task<IDictionary<string, string>> GetAllAssetsAsync(string machineKey)
         {
-            if (string.IsNullOrEmpty(machineKey))
-            {
-                throw new ArgumentNullException(nameof(machineKey));
-            }
-            
-            var config = _configService.GetConfiguration();
-            if (string.IsNullOrEmpty(config.ServerUrl))
-            {
-                throw new InvalidOperationException("Server URL not configured");
-            }
-            
+            ValidateAssetRequestPrerequisites(machineKey);
+
             try
             {
-                var serverUrl = config.ServerUrl.TrimEnd('/');
-                
-                // Create request with machine key in the body
-                var requestData = new { MachineKey = machineKey };
-                var content = new StringContent(
-                    JsonSerializer.Serialize(requestData),
-                    Encoding.UTF8,
-                    "application/json");
-                
-                // POST to the bot-agent accessible assets endpoint
-                var response = await _httpClient.PostAsync(
-                    $"{serverUrl}/api/bot-agent/assets/accessible",
-                    content);
-                
-                response.EnsureSuccessStatusCode();
-                
-                // Log the raw response for debugging
-                string rawJson = await response.Content.ReadAsStringAsync();
-                _logger.LogDebug("Raw JSON response: {Json}", rawJson);
-                
-                List<AssetInfo> accessibleAssets;
-                try
-                {
-                    // Try to deserialize using the updated AssetInfo class
-                    var options = new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    };
-                    accessibleAssets = JsonSerializer.Deserialize<List<AssetInfo>>(rawJson, options);
-                }
-                catch (JsonException ex)
-                {
-                    _logger.LogError(ex, "Error deserializing asset list: {Message}", ex.Message);
-                    _logger.LogDebug("Attempting to deserialize as dynamic JSON");
-                    
-                    // Fallback: we'll just extract the keys from the raw JSON
-                    accessibleAssets = new List<AssetInfo>();
-                    using (JsonDocument doc = JsonSerializer.Deserialize<JsonDocument>(rawJson))
-                    {
-                        foreach (JsonElement item in doc.RootElement.EnumerateArray())
-                        {
-                            if (item.TryGetProperty("key", out JsonElement keyElement) && 
-                                keyElement.ValueKind == JsonValueKind.String)
-                            {
-                                accessibleAssets.Add(new AssetInfo { 
-                                    Key = keyElement.GetString()
-                                });
-                            }
-                        }
-                    }
-                }
-                
-                // Convert the list of asset info to a dictionary of key-value pairs
-                var assetDictionary = new Dictionary<string, string>();
-                if (accessibleAssets != null)
-                {
-                    foreach (var asset in accessibleAssets)
-                    {
-                        if (string.IsNullOrEmpty(asset.Key))
-                        {
-                            _logger.LogWarning("Skipping asset with null or empty key");
-                            continue;
-                        }
-                        
-                        // The actual asset values are not included in the accessible assets list
-                        // We need to request each asset value individually
-                        var assetValue = await GetAssetAsync(asset.Key, machineKey);
-                        if (assetValue != null)
-                        {
-                            assetDictionary[asset.Key] = assetValue;
-                        }
-                    }
-                    
-                    _logger.LogInformation("Retrieved {Count} accessible assets", assetDictionary.Count);
-                }
-                
+                var response = await FetchAccessibleAssetsFromServerAsync(machineKey);
+                var accessibleAssets = await DeserializeAssetListAsync(response);
+                var assetDictionary = await BuildAssetDictionaryAsync(accessibleAssets, machineKey);
+
+                _logger.LogInformation("Retrieved {Count} accessible assets", assetDictionary.Count);
                 return assetDictionary;
             }
             catch (HttpRequestException ex)
@@ -348,6 +300,127 @@ namespace OpenAutomate.BotAgent.Service.Services
                 _logger.LogError(ex, "Error getting accessible assets: {Message}", ex.Message);
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Validates prerequisites for asset requests
+        /// </summary>
+        private void ValidateAssetRequestPrerequisites(string machineKey)
+        {
+            if (string.IsNullOrEmpty(machineKey))
+            {
+                throw new ArgumentNullException(nameof(machineKey));
+            }
+
+            var config = _configService.GetConfiguration();
+            if (string.IsNullOrEmpty(config.ServerUrl))
+            {
+                throw new InvalidOperationException("Server URL not configured");
+            }
+        }
+
+        /// <summary>
+        /// Fetches the list of accessible assets from the server
+        /// </summary>
+        private async Task<HttpResponseMessage> FetchAccessibleAssetsFromServerAsync(string machineKey)
+        {
+            var config = _configService.GetConfiguration();
+            var serverUrl = config.ServerUrl.TrimEnd('/');
+
+            // Create request with machine key in the body
+            var requestData = new { MachineKey = machineKey };
+            var content = new StringContent(
+                JsonSerializer.Serialize(requestData),
+                Encoding.UTF8,
+                "application/json");
+
+            // POST to the bot-agent accessible assets endpoint
+            var response = await _httpClient.PostAsync(
+                $"{serverUrl}/api/bot-agent/assets/accessible",
+                content);
+
+            response.EnsureSuccessStatusCode();
+            return response;
+        }
+
+        /// <summary>
+        /// Deserializes the asset list from the HTTP response with fallback handling
+        /// </summary>
+        private async Task<List<AssetInfo>> DeserializeAssetListAsync(HttpResponseMessage response)
+        {
+            // Log the raw response for debugging
+            string rawJson = await response.Content.ReadAsStringAsync();
+            _logger.LogDebug("Raw JSON response: {Json}", rawJson);
+
+            try
+            {
+                // Try to deserialize using the updated AssetInfo class
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                return JsonSerializer.Deserialize<List<AssetInfo>>(rawJson, options);
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Error deserializing asset list: {Message}", ex.Message);
+                _logger.LogDebug("Attempting to deserialize as dynamic JSON");
+
+                // Fallback: extract the keys from the raw JSON
+                return ExtractAssetKeysFromRawJson(rawJson);
+            }
+        }
+
+        /// <summary>
+        /// Extracts asset keys from raw JSON as a fallback deserialization method
+        /// </summary>
+        private List<AssetInfo> ExtractAssetKeysFromRawJson(string rawJson)
+        {
+            var accessibleAssets = new List<AssetInfo>();
+            using (JsonDocument doc = JsonSerializer.Deserialize<JsonDocument>(rawJson))
+            {
+                foreach (JsonElement item in doc.RootElement.EnumerateArray())
+                {
+                    if (item.TryGetProperty("key", out JsonElement keyElement) &&
+                        keyElement.ValueKind == JsonValueKind.String)
+                    {
+                        accessibleAssets.Add(new AssetInfo {
+                            Key = keyElement.GetString()
+                        });
+                    }
+                }
+            }
+            return accessibleAssets;
+        }
+
+        /// <summary>
+        /// Builds the asset dictionary by fetching individual asset values
+        /// </summary>
+        private async Task<Dictionary<string, string>> BuildAssetDictionaryAsync(List<AssetInfo> accessibleAssets, string machineKey)
+        {
+            var assetDictionary = new Dictionary<string, string>();
+
+            if (accessibleAssets != null)
+            {
+                foreach (var asset in accessibleAssets)
+                {
+                    if (string.IsNullOrEmpty(asset.Key))
+                    {
+                        _logger.LogWarning("Skipping asset with null or empty key");
+                        continue;
+                    }
+
+                    // The actual asset values are not included in the accessible assets list
+                    // We need to request each asset value individually
+                    var assetValue = await GetAssetAsync(asset.Key, machineKey);
+                    if (assetValue != null)
+                    {
+                        assetDictionary[asset.Key] = assetValue;
+                    }
+                }
+            }
+
+            return assetDictionary;
         }
         
         /// <summary>

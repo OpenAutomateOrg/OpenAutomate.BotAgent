@@ -1,48 +1,72 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using OpenAutomate.BotAgent.Service.Core;
 using OpenAutomate.BotAgent.Executor.Services;
 using OpenAutomate.BotAgent.Executor.Models;
-using System.Text.Json.Serialization;
 
 namespace OpenAutomate.BotAgent.Service.Services
 {
     /// <summary>
-    /// Enhanced execution manager that handles package download and bot execution
+    /// Enhanced execution manager that handles package download and bot execution with real-time status updates
     /// </summary>
-    public class ExecutionManager : IExecutionManager
+    public class ExecutionManager : IExecutionManager, IDisposable
     {
         private readonly ILogger<ExecutionManager> _logger;
         private readonly IConfigurationService _configService;
         private readonly IPackageDownloadService _packageDownloadService;
+        private readonly IMachineKeyManager _machineKeyManager;
         private readonly string _executorPath;
         private readonly string _botScriptsPath = @"C:\ProgramData\OpenAutomate\BotScripts";
+        private readonly ConcurrentDictionary<string, Process> _runningExecutions = new();
+        private readonly Timer _statusUpdateTimer;
+        private SignalRBroadcaster _signalRBroadcaster;
+
+        // Standardized log message templates
+        private static class LogMessages
+        {
+            public const string ExecutionStarting = "Starting execution {ExecutionId} for package {PackageName} v{Version}";
+            public const string PackageDownloadStarted = "Downloading package {PackageId} version {Version}";
+            public const string PackageDownloadCompleted = "Package downloaded successfully to: {DownloadPath}";
+            public const string PackageDownloadFailed = "Failed to download package {PackageId}";
+            public const string TaskQueuedSuccessfully = "Task {ExecutionId} queued successfully";
+            public const string ExecutorProcessStarted = "Executor process started for execution {ExecutionId} with PID: {ProcessId}";
+            public const string ExecutorProcessCompleted = "Executor process completed for execution {ExecutionId} with exit code: {ExitCode}";
+            public const string ExecutorProcessFailed = "Executor process failed for execution {ExecutionId}";
+            public const string ExecutionCancelled = "Canceling execution {ExecutionId}";
+            public const string StatusUpdateSent = "Status update sent for execution {ExecutionId}: {Status}";
+            public const string ExecutorPathResolved = "Resolved executor full path: {ExecutorPath}";
+            public const string ExecutorFileNotFound = "Executor file not found at: {ExecutorPath}";
+        }
 
         public ExecutionManager(
             ILogger<ExecutionManager> logger,
             IConfigurationService configService,
-            IPackageDownloadService packageDownloadService)
+            IPackageDownloadService packageDownloadService,
+            IMachineKeyManager machineKeyManager)
         {
             _logger = logger;
             _configService = configService;
             _packageDownloadService = packageDownloadService;
+            _machineKeyManager = machineKeyManager;
+            _signalRBroadcaster = null; // Will be set later by BotAgentService
             
             // Fix executor path to point to the Executor folder in the installation directory
-            // When running from installed location: C:\Program Files (x86)\OpenAutomate.Agent\Service\ (current service location)
-            // To:                                   C:\Program Files (x86)\OpenAutomate.Agent\Executor\
             var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-            _logger.LogInformation("=== ExecutionManager Constructor ===");
             _logger.LogInformation("Base directory (AppDomain.CurrentDomain.BaseDirectory): {BaseDirectory}", baseDirectory);
-            
+
             string executorPath;
-            
+
             // Check if we're running from the installed location (Service folder exists)
-            if (baseDirectory.EndsWith("Service\\", StringComparison.OrdinalIgnoreCase) || 
+            if (baseDirectory.EndsWith("Service\\", StringComparison.OrdinalIgnoreCase) ||
                 baseDirectory.EndsWith("Service", StringComparison.OrdinalIgnoreCase))
             {
                 // Running from installed location - go up one level and into Executor folder
@@ -57,38 +81,36 @@ namespace OpenAutomate.BotAgent.Service.Services
                 _logger.LogInformation("Detected development location. Using relative path to development executor");
             }
             
-            _logger.LogInformation("Relative executor path: {RelativePath}", executorPath);
-            
             _executorPath = Path.GetFullPath(executorPath);
-            _logger.LogInformation("Resolved executor full path: {ExecutorPath}", _executorPath);
+            _logger.LogInformation(LogMessages.ExecutorPathResolved, _executorPath);
             
             var executorExists = File.Exists(_executorPath);
             _logger.LogInformation("Executor file exists: {ExecutorExists}", executorExists);
             
             if (!executorExists)
             {
-                var directory = Path.GetDirectoryName(_executorPath);
-                _logger.LogWarning("Executor directory path: {DirectoryPath}", directory);
-                _logger.LogWarning("Executor directory exists: {DirectoryExists}", Directory.Exists(directory));
-                
-                if (Directory.Exists(directory))
-                {
-                    var files = Directory.GetFiles(directory, "*.exe");
-                    _logger.LogWarning("Executable files in directory: {ExecutableFiles}", string.Join(", ", files.Select(Path.GetFileName)));
-                }
+                _logger.LogWarning(LogMessages.ExecutorFileNotFound, _executorPath);
             }
             
-            _logger.LogInformation("=== ExecutionManager Constructor Complete ===");
+            // Start periodic status update timer (every 5 seconds)
+            _statusUpdateTimer = new Timer(SendPeriodicStatusUpdates, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+        }
+
+        /// <summary>
+        /// Sets the SignalR broadcaster (called by BotAgentService after SignalR is initialized)
+        /// </summary>
+        public void SetSignalRBroadcaster(SignalRBroadcaster signalRBroadcaster)
+        {
+            _signalRBroadcaster = signalRBroadcaster;
+            _logger.LogInformation("SignalR broadcaster injected into ExecutionManager");
         }
 
         public async Task<string> StartExecutionAsync(object executionData)
         {
             _logger.LogInformation("=== StartExecutionAsync called ===");
-            SimpleTaskExecutor executor = null;
             try
             {
                 _logger.LogInformation("Received execution data: {ExecutionData}", JsonSerializer.Serialize(executionData));
-                _logger.LogInformation("Execution data type: {Type}", executionData?.GetType().Name ?? "null");
 
                 ExecutionCommand execution;
                 
@@ -96,7 +118,6 @@ namespace OpenAutomate.BotAgent.Service.Services
                 if (executionData is ExecutionCommand cmd)
                 {
                     execution = cmd;
-                    _logger.LogInformation("Execution data is already ExecutionCommand type");
                 }
                 else
                 {
@@ -104,18 +125,13 @@ namespace OpenAutomate.BotAgent.Service.Services
                     {
                         // If it's a JsonElement (from SignalR), convert it properly with case-insensitive options
                         var jsonString = JsonSerializer.Serialize(executionData);
-                        _logger.LogInformation("Serialized execution data: {JsonString}", jsonString);
-                        
                         var options = new JsonSerializerOptions
                         {
                             PropertyNameCaseInsensitive = true,
                             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                         };
                         
-                        _logger.LogInformation("About to deserialize with options...");
                         execution = JsonSerializer.Deserialize<ExecutionCommand>(jsonString, options);
-                        _logger.LogInformation("Successfully deserialized ExecutionCommand: ExecutionId={ExecutionId}, PackageId={PackageId}, PackageName={PackageName}, Version={Version}", 
-                            execution?.ExecutionId, execution?.PackageId, execution?.PackageName, execution?.Version);
                     }
                     catch (Exception deserEx)
                     {
@@ -124,47 +140,33 @@ namespace OpenAutomate.BotAgent.Service.Services
                     }
                 }
 
-                if (execution == null)
-                {
-                    _logger.LogError("Failed to deserialize execution data - result is null");
-                    return string.Empty;
-                }
-                
-                if (string.IsNullOrEmpty(execution.ExecutionId) || string.IsNullOrEmpty(execution.PackageId))
+                if (execution == null || string.IsNullOrEmpty(execution.ExecutionId) || string.IsNullOrEmpty(execution.PackageId))
                 {
                     _logger.LogError("Invalid execution data - missing ExecutionId or PackageId. ExecutionId: {ExecutionId}, PackageId: {PackageId}", 
-                        execution.ExecutionId, execution.PackageId);
+                        execution?.ExecutionId, execution?.PackageId);
                     return string.Empty;
                 }
 
-                _logger.LogInformation("Starting execution {ExecutionId} for package {PackageName} v{Version}",
-                    execution.ExecutionId, execution.PackageName, execution.Version);
+                _logger.LogInformation(LogMessages.ExecutionStarting, execution.ExecutionId, execution.PackageName, execution.Version);
 
                 // Download package from backend
-                _logger.LogInformation("About to call DownloadPackageAsync for {PackageId} version {Version}", execution.PackageId, execution.Version);
+                _logger.LogInformation(LogMessages.PackageDownloadStarted, execution.PackageId, execution.Version);
                 var downloadPath = await _packageDownloadService.DownloadPackageAsync(
                     execution.PackageId, execution.Version, execution.PackageName, execution.TenantSlug);
 
-                _logger.LogInformation("DownloadPackageAsync completed. Result: {DownloadPath}", downloadPath ?? "null");
-
                 if (string.IsNullOrEmpty(downloadPath))
                 {
-                    _logger.LogError("Failed to download package {PackageId}", execution.PackageId);
+                    _logger.LogError(LogMessages.PackageDownloadFailed, execution.PackageId);
+                    await BroadcastExecutionStatus(execution.ExecutionId, "Failed", "Package download failed");
                     return execution.ExecutionId;
                 }
 
-                _logger.LogInformation("Package downloaded successfully to: {DownloadPath}", downloadPath);
+                _logger.LogInformation(LogMessages.PackageDownloadCompleted, downloadPath);
 
-                // Add task to executor queue using the actual download path
-                _logger.LogInformation("Adding task to executor queue");
-                executor = new SimpleTaskExecutor(_logger);
-                executor.AddTask(execution.PackageId, execution.PackageName, execution.Version, execution.ExecutionId, downloadPath);
+                // Create a single task for this execution and spawn dedicated executor
+                await CreateSingleTaskAndSpawnExecutorAsync(execution, downloadPath);
 
-                // Trigger executor (fire-and-forget to allow concurrent executions)
-                _logger.LogInformation("Triggering executor");
-                _ = TriggerExecutorAsync(); // Don't await - allow concurrent executions
-
-                _logger.LogInformation("Execution {ExecutionId} queued successfully", execution.ExecutionId);
+                _logger.LogInformation(LogMessages.TaskQueuedSuccessfully, execution.ExecutionId);
                 return execution.ExecutionId;
             }
             catch (Exception ex)
@@ -175,28 +177,193 @@ namespace OpenAutomate.BotAgent.Service.Services
             finally
             {
                 _logger.LogInformation("=== StartExecutionAsync completed ===");
-                // Dispose executor to free resources
-                executor?.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Creates a single task for the execution and spawns a dedicated executor process
+        /// </summary>
+        private async Task CreateSingleTaskAndSpawnExecutorAsync(ExecutionCommand execution, string downloadPath)
+        {
+            // Create a dedicated task queue file for this execution
+            var taskQueuePath = Path.Combine(Path.GetTempPath(), $"TaskQueue_{execution.ExecutionId}.json");
+            
+            var task = new BotTask
+            {
+                TaskId = Guid.NewGuid().ToString(),
+                ExecutionId = execution.ExecutionId,
+                PackageId = execution.PackageId,
+                PackageName = execution.PackageName,
+                Version = execution.Version,
+                ScriptPath = downloadPath,
+                Status = "Pending",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var taskQueue = new TaskQueue
+            {
+                Tasks = new List<BotTask> { task }
+            };
+
+            // Save the single task to the dedicated queue file
+            var json = JsonSerializer.Serialize(taskQueue, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(taskQueuePath, json);
+
+            // Spawn dedicated executor process for this single task
+            await SpawnDedicatedExecutorAsync(execution, taskQueuePath);
+        }
+
+        /// <summary>
+        /// Spawns a dedicated executor process for the given execution
+        /// </summary>
+        private async Task SpawnDedicatedExecutorAsync(ExecutionCommand execution, string taskQueuePath)
+        {
+            try
+            {
+                if (!File.Exists(_executorPath))
+                {
+                    _logger.LogError(LogMessages.ExecutorFileNotFound, _executorPath);
+                    await BroadcastExecutionStatus(execution.ExecutionId, "Failed", "Executor not found");
+                    return;
+                }
+
+                // Get configuration for log upload parameters
+                var config = _configService.GetConfiguration();
+                var machineKey = _machineKeyManager.GetMachineKey();
+
+                // Build command line arguments
+                var arguments = $"--task-queue \"{taskQueuePath}\" --execution-id \"{execution.ExecutionId}\"";
                 
-                // Force garbage collection after execution
+                // Add log upload parameters if available
+                if (!string.IsNullOrEmpty(execution.TenantSlug))
+                {
+                    arguments += $" --tenant-slug \"{execution.TenantSlug}\"";
+                }
+                
+                // Use cached backend API URL for log uploads, fallback to orchestrator URL if not cached
+                var apiBaseUrl = config.BackendApiUrl ?? config.OrchestratorUrl;
+                if (!string.IsNullOrEmpty(apiBaseUrl))
+                {
+                    arguments += $" --api-base-url \"{apiBaseUrl}\"";
+                }
+                
+                if (!string.IsNullOrEmpty(machineKey))
+                {
+                    arguments += $" --machine-key \"{machineKey}\"";
+                }
+
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = _executorPath,
+                    Arguments = arguments,
+                    UseShellExecute = true, // Show console window for each task
+                    CreateNoWindow = false,
+                    WindowStyle = ProcessWindowStyle.Normal
+                };
+
+                var process = new Process { StartInfo = startInfo };
+                
+                // Enable events to track process completion
+                process.EnableRaisingEvents = true;
+                
+                // ✅ FIX: Track the process BEFORE starting it to prevent race condition
+                _runningExecutions.TryAdd(execution.ExecutionId, process);
+                
+                // ✅ FIX: Use proper event handler instead of async void lambda
+                process.Exited += (sender, e) => OnExecutorProcessExited(execution.ExecutionId, process, taskQueuePath);
+                
+                process.Start();
+                
+                _logger.LogInformation(LogMessages.ExecutorProcessStarted, execution.ExecutionId, process.Id);
+                await BroadcastExecutionStatus(execution.ExecutionId, "Running", "Execution started");
+                
+                // Don't wait for the process - let it run independently
+            }
+            catch (Exception ex)
+            {
+                // ✅ FIX: Clean up tracking if process failed to start
+                _runningExecutions.TryRemove(execution.ExecutionId, out _);
+                
+                _logger.LogError(ex, "Failed to spawn executor for execution {ExecutionId}", execution.ExecutionId);
+                await BroadcastExecutionStatus(execution.ExecutionId, "Failed", $"Failed to start executor: {ex.Message}");
+                
+                // Clean up the temporary task queue file
                 try
                 {
-                    GC.Collect();
-                    GC.WaitForPendingFinalizers();
-                    GC.Collect();
+                    if (File.Exists(taskQueuePath))
+                        File.Delete(taskQueuePath);
+                }
+                catch { }
+            }
+        }
+
+        /// <summary>
+        /// Handles executor process completion
+        /// ✅ FIX: Changed from async Task to void to properly handle Process.Exited event
+        /// </summary>
+        private void OnExecutorProcessExited(string executionId, Process process, string taskQueuePath)
+        {
+            // ✅ FIX: Use Task.Run to handle async operations safely from event handler
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    _runningExecutions.TryRemove(executionId, out _);
+                    
+                    var exitCode = process.ExitCode;
+                    _logger.LogInformation(LogMessages.ExecutorProcessCompleted, executionId, exitCode);
+                    
+                    // Determine final status based on exit code
+                    string finalStatus = exitCode == 0 ? "Completed" : "Failed";
+                    string statusMessage = exitCode == 0 ? "Execution completed successfully" : $"Execution failed with exit code {exitCode}";
+                    
+                    await BroadcastExecutionStatus(executionId, finalStatus, statusMessage);
+                    
+                    // Clean up the temporary task queue file
+                    try
+                    {
+                        if (File.Exists(taskQueuePath))
+                            File.Delete(taskQueuePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to clean up task queue file: {TaskQueuePath}", taskQueuePath);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Error during garbage collection");
+                    _logger.LogError(ex, "Error handling executor process exit for execution {ExecutionId}", executionId);
                 }
-            }
+                finally
+                {
+                    process?.Dispose();
+                }
+            });
         }
 
         public async Task CancelExecutionAsync(string executionId)
         {
-            _logger.LogInformation("Canceling execution {ExecutionId}", executionId);
-            // TODO: Implement cancellation logic by updating task status in queue
-            await Task.CompletedTask;
+            _logger.LogInformation(LogMessages.ExecutionCancelled, executionId);
+            
+            if (_runningExecutions.TryGetValue(executionId, out var process))
+            {
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        process.Kill(true); // Kill process tree
+                        await BroadcastExecutionStatus(executionId, "Cancelled", "Execution was cancelled");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error cancelling execution {ExecutionId}", executionId);
+                }
+                finally
+                {
+                    _runningExecutions.TryRemove(executionId, out _);
+                }
+            }
         }
 
         public async Task SendStatusUpdatesAsync()
@@ -207,107 +374,79 @@ namespace OpenAutomate.BotAgent.Service.Services
 
         public async Task<bool> HasActiveExecutionsAsync()
         {
-            // Check if there are running tasks in the queue
-            var taskQueuePath = @"C:\ProgramData\OpenAutomate\TaskQueue.json";
-            if (!File.Exists(taskQueuePath))
-                return false;
-
-            try
-            {
-                var json = await File.ReadAllTextAsync(taskQueuePath);
-                var queue = JsonSerializer.Deserialize<TaskQueue>(json);
-                return queue?.Tasks?.Any(t => t.Status == "Running") ?? false;
-            }
-            catch
-            {
-                return false;
-            }
+            // Check if there are any running executor processes
+            await Task.CompletedTask;
+            return _runningExecutions.Count > 0;
         }
 
-        private async Task TriggerExecutorAsync()
+        /// <summary>
+        /// Broadcasts execution status updates through SignalR
+        /// </summary>
+        private async Task BroadcastExecutionStatus(string executionId, string status, string message = null)
         {
             try
             {
-                _logger.LogInformation("=== TriggerExecutorAsync Starting ===");
-                _logger.LogInformation("Attempting to execute: {ExecutorPath}", _executorPath);
-                _logger.LogInformation("Executor file exists: {ExecutorExists}", File.Exists(_executorPath));
-                
-                if (!File.Exists(_executorPath))
+                if (_signalRBroadcaster != null)
                 {
-                    _logger.LogError("Executor file not found at: {ExecutorPath}", _executorPath);
-                    var directory = Path.GetDirectoryName(_executorPath);
-                    _logger.LogError("Directory exists: {DirectoryExists}", Directory.Exists(directory));
-                    if (Directory.Exists(directory))
-                    {
-                        var files = Directory.GetFiles(directory);
-                        _logger.LogInformation("Files in executor directory: {Files}", string.Join(", ", files.Select(Path.GetFileName)));
-                    }
-                    return;
+                    await _signalRBroadcaster.BroadcastExecutionStatusAsync(executionId, status, message);
                 }
-
-                // Configuration: Set to true to show console window, false to hide it
-                bool showConsoleWindow = true; // Change this to false if you want to hide the console
-                
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = _executorPath,
-                    UseShellExecute = !showConsoleWindow, // Use shell execute when showing console
-                    RedirectStandardOutput = !showConsoleWindow, // Only redirect when console is hidden
-                    RedirectStandardError = !showConsoleWindow,  // Only redirect when console is hidden
-                    CreateNoWindow = !showConsoleWindow, // Show window when showConsoleWindow is true
-                    WindowStyle = showConsoleWindow ? ProcessWindowStyle.Normal : ProcessWindowStyle.Hidden
-                };
-
-                _logger.LogInformation("Process start info - FileName: {FileName}", startInfo.FileName);
-                _logger.LogInformation("Process start info - ShowConsoleWindow: {ShowConsole}", showConsoleWindow);
-                _logger.LogInformation("Process start info - WorkingDirectory: {WorkingDirectory}", startInfo.WorkingDirectory);
-
-                using var process = new Process { StartInfo = startInfo };
-                
-                _logger.LogInformation("Starting executor process...");
-                process.Start();
-                
-                _logger.LogInformation("Executor process started with PID: {ProcessId}", process.Id);
-                
-                if (showConsoleWindow)
-                {
-                    // When showing console, we can't capture output, but we can see it live
-                    _logger.LogInformation("Console window is visible - executor output will be shown in the console window");
-                    await process.WaitForExitAsync();
-                    _logger.LogInformation("Executor finished with exit code: {ExitCode}", process.ExitCode);
-                }
-                else
-                {
-                    // When console is hidden, capture output as before
-                    var outputTask = process.StandardOutput.ReadToEndAsync();
-                    var errorTask = process.StandardError.ReadToEndAsync();
-                    
-                    await process.WaitForExitAsync();
-
-                    _logger.LogInformation("Executor finished with exit code: {ExitCode}", process.ExitCode);
-                    
-                    // Get the output results
-                    var output = await outputTask;
-                    var error = await errorTask;
-                    
-                    if (!string.IsNullOrEmpty(output))
-                    {
-                        _logger.LogInformation("Executor stdout: {Output}", output);
-                    }
-                    
-                    if (!string.IsNullOrEmpty(error))
-                    {
-                        _logger.LogWarning("Executor stderr: {Error}", error);
-                    }
-                }
-                
-                _logger.LogInformation("=== TriggerExecutorAsync Completed ===");
+                _logger.LogInformation(LogMessages.StatusUpdateSent, executionId, status);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to trigger executor at path: {ExecutorPath}", _executorPath);
-                throw;
+                _logger.LogWarning(ex, "Failed to broadcast execution status for {ExecutionId}", executionId);
             }
+        }
+
+        /// <summary>
+        /// Sends periodic status updates for all running executions
+        /// </summary>
+        private async void SendPeriodicStatusUpdates(object state)
+        {
+            try
+            {
+                foreach (var kvp in _runningExecutions.ToList())
+                {
+                    var executionId = kvp.Key;
+                    var process = kvp.Value;
+                    
+                    if (process.HasExited)
+                    {
+                        // Process has exited but event might not have fired yet
+                        _runningExecutions.TryRemove(executionId, out _);
+                    }
+                    else
+                    {
+                        // Send periodic heartbeat status
+                        await BroadcastExecutionStatus(executionId, "Running", "Execution in progress");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error during periodic status updates");
+            }
+        }
+
+        public void Dispose()
+        {
+            _statusUpdateTimer?.Dispose();
+            
+            // Clean up any running processes
+            foreach (var kvp in _runningExecutions.ToList())
+            {
+                try
+                {
+                    var process = kvp.Value;
+                    if (!process.HasExited)
+                    {
+                        process.Kill(true);
+                    }
+                    process.Dispose();
+                }
+                catch { }
+            }
+            _runningExecutions.Clear();
         }
     }
 

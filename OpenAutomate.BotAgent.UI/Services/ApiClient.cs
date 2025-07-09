@@ -302,7 +302,7 @@ namespace OpenAutomate.BotAgent.UI.Services
         {
             return new ConfigurationModel
             {
-                ServerUrl = serviceConfig.ServerUrl,
+                OrchestratorUrl = serviceConfig.OrchestratorUrl,
                 MachineKey = serviceConfig.MachineKey,
                 MachineName = Environment.MachineName, // This is not stored in the service config
                 LoggingLevel = serviceConfig.LogLevel
@@ -314,12 +314,12 @@ namespace OpenAutomate.BotAgent.UI.Services
         /// </summary>
         private BotAgentConfig ConvertUiModelToServiceConfig(ConfigurationModel uiModel)
         {
-            // Try to get current config first to preserve values like AutoStart
+            // Try to get current config first to preserve values like AutoStart and BackendApiUrl
             try
             {
                 var currentConfigTask = _httpClient.GetAsync("config");
                 currentConfigTask.Wait(TimeSpan.FromSeconds(2));
-                
+
                 if (currentConfigTask.IsCompleted && !currentConfigTask.IsFaulted)
                 {
                     var response = currentConfigTask.Result;
@@ -328,12 +328,15 @@ namespace OpenAutomate.BotAgent.UI.Services
                         var currentConfig = response.Content.ReadFromJsonAsync<BotAgentConfig>().Result;
                         if (currentConfig != null)
                         {
-                            LoggingService.Debug("Preserving AutoStart setting: {AutoStart}", currentConfig.AutoStart);
-                            
-                            // Return with preserved AutoStart setting
+                            LoggingService.Debug("Preserving AutoStart: {AutoStart}, BackendApiUrl: {BackendApiUrl}",
+                                currentConfig.AutoStart,
+                                string.IsNullOrEmpty(currentConfig.BackendApiUrl) ? "None" : "Cached");
+
+                            // Return with preserved settings
                             return new BotAgentConfig
                             {
-                                ServerUrl = uiModel.ServerUrl,
+                                OrchestratorUrl = uiModel.OrchestratorUrl,
+                                BackendApiUrl = currentConfig.BackendApiUrl, // Preserve cached backend URL
                                 MachineKey = uiModel.MachineKey,
                                 LogLevel = uiModel.LoggingLevel,
                                 ApiPort = _apiPort,
@@ -345,14 +348,15 @@ namespace OpenAutomate.BotAgent.UI.Services
             }
             catch (Exception ex)
             {
-                LoggingService.Debug("Could not fetch current config to preserve AutoStart: {Error}", ex.Message);
+                LoggingService.Debug("Could not fetch current config to preserve settings: {Error}", ex.Message);
                 // Continue with default behavior
             }
-            
+
             // Default behavior if we couldn't get the current config
             return new BotAgentConfig
             {
-                ServerUrl = uiModel.ServerUrl,
+                OrchestratorUrl = uiModel.OrchestratorUrl,
+                BackendApiUrl = null, // Will be discovered on first use
                 MachineKey = uiModel.MachineKey,
                 LogLevel = uiModel.LoggingLevel,
                 ApiPort = _apiPort,

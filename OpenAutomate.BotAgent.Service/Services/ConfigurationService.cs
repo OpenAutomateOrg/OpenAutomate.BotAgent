@@ -31,7 +31,8 @@ namespace OpenAutomate.BotAgent.Service.Services
             // Initialize with app settings
             _config = new BotAgentConfig
             {
-                ServerUrl = _options.Value.ServerUrl,
+                OrchestratorUrl = _options.Value.OrchestratorUrl ?? _options.Value.ServerUrl, // Migrate from ServerUrl
+                BackendApiUrl = _options.Value.BackendApiUrl, // Will be null initially
                 MachineKey = _options.Value.MachineKey,
                 AutoStart = _options.Value.AutoStart,
                 LogLevel = _options.Value.LogLevel,
@@ -107,6 +108,16 @@ namespace OpenAutomate.BotAgent.Service.Services
                     
                     if (fileConfig != null)
                     {
+                        // Handle migration from old format
+                        if (string.IsNullOrEmpty(fileConfig.OrchestratorUrl) && !string.IsNullOrEmpty(fileConfig.ServerUrl))
+                        {
+                            _logger.LogInformation("Migrating configuration from ServerUrl to OrchestratorUrl");
+                            fileConfig.OrchestratorUrl = fileConfig.ServerUrl;
+
+                            // Save the migrated configuration
+                            SaveConfiguration(fileConfig);
+                        }
+
                         // Update config with values from file
                         _config = fileConfig;
                         _logger.LogInformation("Configuration loaded from {ConfigFilePath}", _configFilePath);

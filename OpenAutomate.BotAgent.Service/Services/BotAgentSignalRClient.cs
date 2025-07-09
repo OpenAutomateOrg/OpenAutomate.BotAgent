@@ -8,6 +8,8 @@ using OpenAutomate.BotAgent.Service.Core;
 using Microsoft.AspNetCore.Http.Connections.Client;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Text.RegularExpressions;
 
 namespace OpenAutomate.BotAgent.Service.Services
 {
@@ -19,6 +21,7 @@ namespace OpenAutomate.BotAgent.Service.Services
         private readonly ILogger<BotAgentSignalRClient> _logger;
         private readonly IConfigurationService _configService;
         private readonly IExecutionManager _executionManager;
+        private readonly HttpClient _httpClient;
         private HubConnection _connection;
         private bool _isReconnecting = false;
         private CancellationTokenSource _reconnectCts = new CancellationTokenSource();
@@ -57,32 +60,68 @@ namespace OpenAutomate.BotAgent.Service.Services
             _logger = logger;
             _configService = configService;
             _executionManager = executionManager;
+            _httpClient = new HttpClient();
         }
         
         /// <summary>
-        /// Initializes the SignalR connection
+        /// Initializes the SignalR connection using the discovery mechanism
         /// </summary>
         public async Task InitializeAsync()
         {
             var config = _configService.GetConfiguration();
-            if (string.IsNullOrEmpty(config.MachineKey) || string.IsNullOrEmpty(config.ServerUrl))
+            if (string.IsNullOrEmpty(config.MachineKey) || string.IsNullOrEmpty(config.OrchestratorUrl))
             {
-                _logger.LogError("Cannot initialize SignalR connection: Missing machine key or server URL");
+                _logger.LogError("Cannot initialize SignalR connection: Missing machine key or orchestrator URL");
                 return;
             }
-            
-            var serverUrl = config.ServerUrl.TrimEnd('/');
-            
-            _connection = new HubConnectionBuilder()
-                .WithUrl($"{serverUrl}/hubs/botagent?machineKey={config.MachineKey}", options => 
+
+            try
+            {
+                // Parse the orchestrator URL to get base domain and tenant slug
+                var (baseDomain, tenantSlug) = ParseOrchestratorUrl(config.OrchestratorUrl);
+
+                // Get or discover the backend API URL
+                var apiUrl = config.BackendApiUrl;
+                if (string.IsNullOrEmpty(apiUrl))
                 {
-                    options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets | 
-                                         Microsoft.AspNetCore.Http.Connections.HttpTransportType.LongPolling;
-                    options.SkipNegotiation = false;
-                })
-                .WithAutomaticReconnect(new RetryPolicy())
-                .WithServerTimeout(TimeSpan.FromMinutes(2))
-                .Build();
+                    _logger.LogInformation("Backend API URL not cached, discovering from {BaseDomain}", baseDomain);
+                    apiUrl = await DiscoverApiUrlAsync(baseDomain);
+                    if (string.IsNullOrEmpty(apiUrl))
+                    {
+                        _logger.LogError("Failed to discover backend API URL from {BaseDomain}", baseDomain);
+                        return;
+                    }
+
+                    // Cache the discovered backend API URL
+                    config.BackendApiUrl = apiUrl;
+                    _configService.SaveConfiguration(config);
+                    _logger.LogInformation("Cached backend API URL: {ApiUrl}", apiUrl);
+                }
+                else
+                {
+                    _logger.LogInformation("Using cached backend API URL: {ApiUrl}", apiUrl);
+                }
+
+                // Construct the final SignalR hub URL
+                var hubUrl = $"{apiUrl.TrimEnd('/')}/{tenantSlug}/hubs/botagent";
+                _logger.LogInformation("Connecting to SignalR hub at {HubUrl}", hubUrl);
+
+                _connection = new HubConnectionBuilder()
+                    .WithUrl($"{hubUrl}?machineKey={config.MachineKey}", options =>
+                    {
+                        options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets |
+                                             Microsoft.AspNetCore.Http.Connections.HttpTransportType.LongPolling;
+                        options.SkipNegotiation = false;
+                    })
+                    .WithAutomaticReconnect(new RetryPolicy())
+                    .WithServerTimeout(TimeSpan.FromMinutes(2))
+                    .Build();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during SignalR connection initialization");
+                return;
+            }
             
             // Register command handler
             _connection.On<string, object>("ReceiveCommand", async (command, payload) => 
@@ -126,7 +165,102 @@ namespace OpenAutomate.BotAgent.Service.Services
             
             await ConnectAsync();
         }
-        
+
+        /// <summary>
+        /// Parses the orchestrator URL to extract base domain and tenant slug
+        /// </summary>
+        /// <param name="orchestratorUrl">The full orchestrator URL (e.g., https://cloud.openautomate.me/acme-corp)</param>
+        /// <returns>A tuple containing the base domain and tenant slug</returns>
+        private (string baseDomain, string tenantSlug) ParseOrchestratorUrl(string orchestratorUrl)
+        {
+            try
+            {
+                var uri = new Uri(orchestratorUrl.TrimEnd('/'));
+                var baseDomain = $"{uri.Scheme}://{uri.Host}";
+                if (!uri.IsDefaultPort)
+                {
+                    baseDomain += $":{uri.Port}";
+                }
+
+                var tenantSlug = uri.AbsolutePath.Trim('/');
+                if (string.IsNullOrEmpty(tenantSlug))
+                {
+                    throw new ArgumentException("Orchestrator URL must include a tenant slug (e.g., https://cloud.openautomate.me/tenant-name)");
+                }
+
+                _logger.LogDebug("Parsed orchestrator URL: BaseDomain={BaseDomain}, TenantSlug={TenantSlug}", baseDomain, tenantSlug);
+                return (baseDomain, tenantSlug);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse orchestrator URL: {OrchestratorUrl}", orchestratorUrl);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Discovers the backend API URL from the frontend discovery endpoint
+        /// </summary>
+        /// <param name="baseDomain">The base domain of the frontend (e.g., https://cloud.openautomate.me)</param>
+        /// <returns>The backend API URL</returns>
+        private async Task<string> DiscoverApiUrlAsync(string baseDomain)
+        {
+            const int maxRetries = 3;
+            const int baseDelayMs = 1000;
+
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                try
+                {
+                    var discoveryUrl = $"{baseDomain}/api/connection-info";
+                    _logger.LogDebug("Attempting to discover API URL from {DiscoveryUrl} (attempt {Attempt}/{MaxRetries})",
+                        discoveryUrl, attempt, maxRetries);
+
+                    using var response = await _httpClient.GetAsync(discoveryUrl);
+                    response.EnsureSuccessStatusCode();
+
+                    var content = await response.Content.ReadAsStringAsync();
+                    var discoveryResponse = JsonSerializer.Deserialize<DiscoveryResponse>(content, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    if (string.IsNullOrEmpty(discoveryResponse?.ApiUrl))
+                    {
+                        throw new InvalidOperationException("Discovery response did not contain a valid API URL");
+                    }
+
+                    _logger.LogInformation("Successfully discovered backend API URL: {ApiUrl}", discoveryResponse.ApiUrl);
+                    return discoveryResponse.ApiUrl;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to discover API URL (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
+
+                    if (attempt == maxRetries)
+                    {
+                        _logger.LogError("Failed to discover API URL after {MaxRetries} attempts", maxRetries);
+                        throw;
+                    }
+
+                    // Exponential backoff with jitter
+                    var delay = baseDelayMs * (int)Math.Pow(2, attempt - 1);
+                    var jitter = _jitterRandom.Next(0, delay / 4);
+                    await Task.Delay(delay + jitter);
+                }
+            }
+
+            return null; // This should never be reached due to the throw above
+        }
+
+        /// <summary>
+        /// Response model for the discovery endpoint
+        /// </summary>
+        private sealed class DiscoveryResponse
+        {
+            public string ApiUrl { get; set; } = string.Empty;
+        }
+
         /// <summary>
         /// Connects to the SignalR hub
         /// </summary>
@@ -222,6 +356,28 @@ namespace OpenAutomate.BotAgent.Service.Services
         }
         
         /// <summary>
+        /// Sends an execution status update to the hub
+        /// </summary>
+        public async Task SendExecutionStatusUpdateAsync(string executionId, string status, string message = null)
+        {
+            if (_connection?.State != HubConnectionState.Connected)
+            {
+                _logger.LogWarning("Cannot send execution status update: Not connected");
+                return;
+            }
+            
+            try
+            {
+                await _connection.InvokeAsync("SendExecutionStatusUpdate", executionId, status, message);
+                _logger.LogDebug($"Execution status update sent for {executionId}: {status}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send execution status update for {ExecutionId}", executionId);
+            }
+        }
+        
+        /// <summary>
         /// Starts the keep-alive timer to send periodic pings
         /// </summary>
         private void StartKeepAliveTimer()
@@ -264,65 +420,21 @@ namespace OpenAutomate.BotAgent.Service.Services
             try
             {
                 _logger.LogInformation("Received command: {Command} with payload: {Payload}", command, JsonSerializer.Serialize(payload));
-                
+
                 switch (command)
                 {
                     case "ExecutePackage":
-                        // Extract executionId for deduplication
-                        string executionId = null;
-                        try
-                        {
-                            var payloadJson = JsonSerializer.Serialize(payload);
-                            var payloadDict = JsonSerializer.Deserialize<Dictionary<string, object>>(payloadJson);
-                            if (payloadDict.TryGetValue("executionId", out var execIdObj))
-                            {
-                                executionId = execIdObj.ToString();
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Failed to extract executionId from payload for deduplication");
-                        }
-                        
-                        // Simple deduplication check
-                        if (!string.IsNullOrEmpty(executionId))
-                        {
-                            lock (_executionLock)
-                            {
-                                if (_processedExecutionIds.Contains(executionId))
-                                {
-                                    _logger.LogWarning("Duplicate ExecutePackage command received for executionId: {ExecutionId}. Ignoring.", executionId);
-                                    return;
-                                }
-                                _processedExecutionIds.Add(executionId);
-                                
-                                // Clean up old entries to prevent memory buildup (keep only last 100)
-                                if (_processedExecutionIds.Count > 100)
-                                {
-                                    var oldestEntries = _processedExecutionIds.Take(50).ToList();
-                                    foreach (var entry in oldestEntries)
-                                    {
-                                        _processedExecutionIds.Remove(entry);
-                                    }
-                                }
-                            }
-                        }
-                        
-                        _logger.LogInformation("Processing ExecutePackage command for executionId: {ExecutionId}", executionId ?? "unknown");
-                        await _executionManager.StartExecutionAsync(payload);
+                        await ProcessExecutePackageCommandAsync(payload);
                         break;
-                        
+
                     case "CancelExecution":
-                        var cancelExecutionId = payload.ToString();
-                        _logger.LogInformation("Processing CancelExecution command for executionId: {ExecutionId}", cancelExecutionId);
-                        await _executionManager.CancelExecutionAsync(cancelExecutionId);
+                        await ProcessCancelExecutionCommandAsync(payload);
                         break;
-                        
+
                     case "Heartbeat":
-                        _logger.LogDebug("Processing Heartbeat command");
-                        await SendStatusUpdateAsync("Ready");
+                        await ProcessHeartbeatCommandAsync();
                         break;
-                        
+
                     default:
                         _logger.LogWarning("Unknown command received: {Command}", command);
                         break;
@@ -331,6 +443,96 @@ namespace OpenAutomate.BotAgent.Service.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error handling command: {Command}", command);
+            }
+        }
+
+        /// <summary>
+        /// Processes the ExecutePackage command with deduplication
+        /// </summary>
+        private async Task ProcessExecutePackageCommandAsync(object payload)
+        {
+            // Extract executionId for deduplication
+            string executionId = ExtractExecutionIdFromPayload(payload);
+
+            // Check for duplicate execution
+            if (IsDuplicateExecution(executionId))
+            {
+                _logger.LogWarning("Duplicate ExecutePackage command received for executionId: {ExecutionId}. Ignoring.", executionId);
+                return;
+            }
+
+            _logger.LogInformation("Processing ExecutePackage command for executionId: {ExecutionId}", executionId ?? "unknown");
+            await _executionManager.StartExecutionAsync(payload);
+        }
+
+        /// <summary>
+        /// Processes the CancelExecution command
+        /// </summary>
+        private async Task ProcessCancelExecutionCommandAsync(object payload)
+        {
+            var cancelExecutionId = payload.ToString();
+            _logger.LogInformation("Processing CancelExecution command for executionId: {ExecutionId}", cancelExecutionId);
+            await _executionManager.CancelExecutionAsync(cancelExecutionId);
+        }
+
+        /// <summary>
+        /// Processes the Heartbeat command
+        /// </summary>
+        private async Task ProcessHeartbeatCommandAsync()
+        {
+            _logger.LogDebug("Processing Heartbeat command");
+            await SendStatusUpdateAsync("Ready");
+        }
+
+        /// <summary>
+        /// Extracts the execution ID from the payload for deduplication
+        /// </summary>
+        private string ExtractExecutionIdFromPayload(object payload)
+        {
+            try
+            {
+                var payloadJson = JsonSerializer.Serialize(payload);
+                var payloadDict = JsonSerializer.Deserialize<Dictionary<string, object>>(payloadJson);
+                if (payloadDict.TryGetValue("executionId", out var execIdObj))
+                {
+                    return execIdObj.ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to extract executionId from payload for deduplication");
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Checks if the execution is a duplicate and adds it to the processed list if not
+        /// </summary>
+        private bool IsDuplicateExecution(string executionId)
+        {
+            if (string.IsNullOrEmpty(executionId))
+                return false;
+
+            lock (_executionLock)
+            {
+                if (_processedExecutionIds.Contains(executionId))
+                {
+                    return true;
+                }
+
+                _processedExecutionIds.Add(executionId);
+
+                // Clean up old entries to prevent memory buildup (keep only last 100)
+                if (_processedExecutionIds.Count > 100)
+                {
+                    var oldestEntries = _processedExecutionIds.Take(50).ToList();
+                    foreach (var entry in oldestEntries)
+                    {
+                        _processedExecutionIds.Remove(entry);
+                    }
+                }
+
+                return false;
             }
         }
         
@@ -429,6 +631,7 @@ namespace OpenAutomate.BotAgent.Service.Services
                 _connection?.DisposeAsync().AsTask().GetAwaiter().GetResult();
                 _reconnectCts.Dispose();
                 _connectionLock.Dispose();
+                _httpClient.Dispose();
             }
             catch (Exception ex)
             {

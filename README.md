@@ -21,7 +21,7 @@ The Bot Agent serves as a bridge between the OpenAutomate server and local autom
 
 ## Architecture
 
-The Bot Agent uses a layered architecture:
+The Bot Agent uses a simplified layered architecture:
 
 ```
 ┌─────────────────┐     ┌───────────────┐     ┌──────────────────────┐
@@ -37,9 +37,16 @@ The Bot Agent uses a layered architecture:
 ```
 
 - **Windows Service**: Runs continuously in the background, managing the local API server, credentials, and server communication
-- **WPF UI**: Provides a user-friendly interface for configuration and monitoring
+- **WPF UI**: Provides a user-friendly interface for configuration and monitoring via API polling
 - **Local API Server**: HTTP server on localhost:8080 that enables communication between components
 - **Python SDK**: Allows automation scripts to interact with the Bot Agent
+- **Server Communication**: Real-time execution status updates sent directly to the backend server
+
+**Refactored Architecture**: The Bot Agent has been simplified to eliminate redundant local SignalR infrastructure:
+- **Removed Local SignalR Hub**: No longer uses local SignalR for UI communication
+- **Simplified Communication**: UI uses proven API polling for connection status monitoring
+- **Maintained Real-Time Updates**: All execution status updates continue to flow to the backend server
+- **Improved Performance**: Reduced memory usage, fewer network connections, and better reliability
 
 ## Installation
 

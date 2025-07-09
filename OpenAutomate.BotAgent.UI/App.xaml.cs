@@ -15,8 +15,6 @@ namespace OpenAutomate.BotAgent.UI;
 /// </summary>
 public partial class App : Application
 {
-    private SignalRClientService _signalRClient;
-    
     /// <summary>
     /// Initialize application and set up error handlers
     /// </summary>
@@ -51,9 +49,6 @@ public partial class App : Application
                 "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             args.Handled = true;
         };
-        
-        // Initialize SignalR client
-        InitializeSignalR();
     }
     
     /// <summary>
@@ -61,9 +56,6 @@ public partial class App : Application
     /// </summary>
     protected override void OnExit(ExitEventArgs e)
     {
-        // Clean up SignalR resources
-        _signalRClient?.Dispose();
-        
         // Close and flush logging
         Log.CloseAndFlush();
         
@@ -113,23 +105,6 @@ public partial class App : Application
                 "Fatal Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 
             LoggingService.CloseAndFlush();
-        }
-    }
-    
-    /// <summary>
-    /// Initializes the SignalR client
-    /// </summary>
-    private void InitializeSignalR()
-    {
-        try
-        {
-            _signalRClient = new SignalRClientService();
-            _signalRClient.InitializeAsync().ConfigureAwait(false);
-            LoggingService.Information("SignalR client initialized");
-        }
-        catch (Exception ex)
-        {
-            LoggingService.Error(ex, "Failed to initialize SignalR client");
         }
     }
     

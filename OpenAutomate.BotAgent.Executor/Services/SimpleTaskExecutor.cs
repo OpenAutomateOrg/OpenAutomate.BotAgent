@@ -13,7 +13,7 @@ namespace OpenAutomate.BotAgent.Executor.Services
 {
     public class SimpleTaskExecutor : IDisposable
     {
-        private static readonly string TaskQueuePath = @"C:\ProgramData\OpenAutomate\TaskQueue.json";
+        private static readonly string DefaultTaskQueuePath = @"C:\ProgramData\OpenAutomate\TaskQueue.json";
         private static readonly string BotScriptsPath = @"C:\ProgramData\OpenAutomate\BotScripts";
         private static readonly string VirtualEnvName = "botvenv";
 
@@ -21,11 +21,35 @@ namespace OpenAutomate.BotAgent.Executor.Services
         private readonly object _lockObject = new object();
         private readonly SemaphoreSlim _executorSemaphore = new SemaphoreSlim(1, 1); // Only allow one executor at a time
         private bool _disposed = false;
+        private string _taskQueuePath;
+
+        // Standardized log message templates
+        private static class LogMessages
+        {
+            public const string TaskExecutionStarted = "Executing task {TaskId} for package {PackageName} v{Version}";
+            public const string TaskExecutionCompleted = "Task {TaskId} completed successfully";
+            public const string TaskExecutionFailed = "Task {TaskId} failed: {ErrorMessage}";
+            public const string ScriptPathNotFound = "Script path does not exist: {ScriptPath}";
+            public const string TaskStatusUpdated = "Task {TaskId} status updated to: {Status}";
+            public const string VirtualEnvironmentSetup = "Setting up virtual environment for script path: {ScriptPath}";
+            public const string PythonBotExecutionStarted = "Starting Python bot execution for script path: {ScriptPath}";
+            public const string TaskQueuePathSet = "Using custom task queue path: {TaskQueuePath}";
+        }
 
         public SimpleTaskExecutor(ILogger logger)
         {
             _logger = logger;
+            _taskQueuePath = DefaultTaskQueuePath;
             EnsureDirectoryExists();
+        }
+
+        /// <summary>
+        /// Sets a custom task queue path for this executor instance
+        /// </summary>
+        public void SetCustomTaskQueuePath(string taskQueuePath)
+        {
+            _taskQueuePath = taskQueuePath ?? DefaultTaskQueuePath;
+            _logger.LogInformation(LogMessages.TaskQueuePathSet, _taskQueuePath);
         }
 
         /// <summary>
@@ -88,12 +112,20 @@ namespace OpenAutomate.BotAgent.Executor.Services
                     return false;
                 }
 
-                _logger.LogInformation("Found pending task {TaskId}, executing", task.TaskId);
+                _logger.LogInformation(LogMessages.TaskExecutionStarted, task.TaskId, task.PackageName, task.Version);
 
                 // Execute the task
                 var success = await ExecuteTaskAsync(task);
 
-                _logger.LogInformation("Task {TaskId} execution completed with result: {Success}", task.TaskId, success);
+                if (success)
+                {
+                    _logger.LogInformation(LogMessages.TaskExecutionCompleted, task.TaskId);
+                }
+                else
+                {
+                    _logger.LogError(LogMessages.TaskExecutionFailed, task.TaskId, "Execution failed");
+                }
+
                 return success;
             }
             catch (Exception ex)
@@ -133,6 +165,7 @@ namespace OpenAutomate.BotAgent.Executor.Services
             {
                 var errorMsg = $"Script path does not exist: {task.ScriptPath}";
                 WriteMessage($"❌ {errorMsg}", LogLevel.Error, ConsoleColor.Red);
+                _logger.LogError(LogMessages.ScriptPathNotFound, task.ScriptPath);
                 UpdateTaskStatus(task, "Failed", errorMessage: errorMsg);
                 return false;
             }
@@ -145,15 +178,18 @@ namespace OpenAutomate.BotAgent.Executor.Services
             {
                 // Ensure virtual environment
                 WriteMessage("🔧 Setting up virtual environment...", LogLevel.Information, ConsoleColor.Yellow);
+                _logger.LogInformation(LogMessages.VirtualEnvironmentSetup, task.ScriptPath);
                 await EnsureVirtualEnvironmentAsync(task.ScriptPath);
 
                 // Execute Python bot using bot.py (from bot-example structure)
                 WriteMessage("🐍 Starting Python bot execution...", LogLevel.Information, ConsoleColor.Magenta);
+                _logger.LogInformation(LogMessages.PythonBotExecutionStarted, task.ScriptPath);
                 var success = await ExecutePythonBotAsync(task.ScriptPath);
 
                 // Update final status
                 var finalStatus = success ? "Completed" : "Failed";
                 UpdateTaskStatus(task, finalStatus);
+                _logger.LogInformation(LogMessages.TaskStatusUpdated, task.TaskId, finalStatus);
                 
                 if (success)
                 {
@@ -176,6 +212,7 @@ namespace OpenAutomate.BotAgent.Executor.Services
             catch (Exception ex)
             {
                 WriteMessage($"💥 Error executing task {task.TaskId}: {ex.Message}", LogLevel.Error, ConsoleColor.Red);
+                _logger.LogError(ex, LogMessages.TaskExecutionFailed, task.TaskId, ex.Message);
                 UpdateTaskStatus(task, "Failed", errorMessage: ex.Message);
                 
                 // Cleanup on failure too
@@ -205,95 +242,76 @@ namespace OpenAutomate.BotAgent.Executor.Services
             {
                 _logger.LogWarning(ex, "Failed to cleanup script folder: {ScriptPath}", scriptPath);
             }
-            finally
-            {
-                // Force garbage collection after cleanup to free memory
-                ForceGarbageCollection();
-            }
         }
 
-        private void ForceGarbageCollection()
-        {
-            try
-            {
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                GC.Collect();
-                _logger.LogDebug("Forced garbage collection completed");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error during forced garbage collection");
-            }
-        }
+
 
         private BotTask GetNextPendingTask()
         {
-            lock (_lockObject)
+            try
             {
+                if (!File.Exists(_taskQueuePath))
+                    return null;
+
                 var queue = LoadTaskQueue();
-                return queue.Tasks
-                    .Where(t => t.Status == "Pending")
-                    .OrderBy(t => t.CreatedTime)
-                    .FirstOrDefault();
+                return queue?.Tasks?.FirstOrDefault(t => t.Status == "Pending");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting next pending task from {TaskQueuePath}", _taskQueuePath);
+                return null;
             }
         }
 
         private void UpdateTaskStatus(BotTask task, string status, int? pid = null, string errorMessage = null)
         {
-            lock (_lockObject)
+            try
             {
-                var queue = LoadTaskQueue();
-                
-                // Find the actual task in the queue by TaskId and update it
-                var queueTask = queue.Tasks.FirstOrDefault(t => t.TaskId == task.TaskId);
-                if (queueTask == null)
+                lock (_lockObject)
                 {
-                    _logger.LogWarning("Task {TaskId} not found in queue for status update", task.TaskId);
-                    return;
+                    var queue = LoadTaskQueue();
+                    if (queue?.Tasks == null) return;
+
+                    var existingTask = queue.Tasks.FirstOrDefault(t => t.TaskId == task.TaskId);
+                    if (existingTask != null)
+                    {
+                        existingTask.Status = status;
+                        existingTask.ProcessId = pid;
+                        existingTask.ErrorMessage = errorMessage;
+                        existingTask.UpdatedAt = DateTime.UtcNow;
+
+                        if (status == "Running")
+                            existingTask.StartedAt = DateTime.UtcNow;
+                        else if (status == "Completed" || status == "Failed")
+                            existingTask.CompletedAt = DateTime.UtcNow;
+
+                        SaveTaskQueueSafely(queue);
+                        _logger.LogDebug(LogMessages.TaskStatusUpdated, task.TaskId, status);
+                    }
                 }
-
-                // Update the task in the queue
-                queueTask.Status = status;
-                queueTask.ErrorMessage = errorMessage;
-                
-                if (pid.HasValue)
-                    queueTask.Pid = pid.Value;
-                
-                if (status == "Running")
-                    queueTask.StartTime = DateTime.UtcNow;
-                
-                if (status is "Completed" or "Failed")
-                    queueTask.EndTime = DateTime.UtcNow;
-
-                // Also update the original task object for consistency
-                task.Status = status;
-                task.ErrorMessage = errorMessage;
-                if (pid.HasValue) task.Pid = pid.Value;
-                if (status == "Running") task.StartTime = queueTask.StartTime;
-                if (status is "Completed" or "Failed") task.EndTime = queueTask.EndTime;
-
-                SaveTaskQueueSafely(queue);
-                _logger.LogInformation("Task {TaskId} status updated to {Status}", task.TaskId, status);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating task status for task {TaskId}", task.TaskId);
             }
         }
 
-        /// <summary>
-        /// Removes completed or failed tasks from the queue to prevent accumulation
-        /// </summary>
         private void RemoveCompletedTask(BotTask task)
         {
-            lock (_lockObject)
+            try
             {
-                var queue = LoadTaskQueue();
-                var taskToRemove = queue.Tasks.FirstOrDefault(t => t.TaskId == task.TaskId);
-                
-                if (taskToRemove != null)
+                lock (_lockObject)
                 {
-                    queue.Tasks.Remove(taskToRemove);
+                    var queue = LoadTaskQueue();
+                    if (queue?.Tasks == null) return;
+
+                    queue.Tasks.RemoveAll(t => t.TaskId == task.TaskId);
                     SaveTaskQueueSafely(queue);
-                    _logger.LogInformation("Removed completed task {TaskId} from queue", task.TaskId);
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error removing completed task {TaskId}", task.TaskId);
             }
         }
 
@@ -301,20 +319,16 @@ namespace OpenAutomate.BotAgent.Executor.Services
         {
             try
             {
-                if (!File.Exists(TaskQueuePath))
-                {
-                    var emptyQueue = new TaskQueue();
-                    SaveTaskQueueSafely(emptyQueue);
-                    return emptyQueue;
-                }
+                if (!File.Exists(_taskQueuePath))
+                    return new TaskQueue { Tasks = new List<BotTask>() };
 
-                var json = File.ReadAllText(TaskQueuePath);
-                return JsonSerializer.Deserialize<TaskQueue>(json) ?? new TaskQueue();
+                var json = File.ReadAllText(_taskQueuePath);
+                return JsonSerializer.Deserialize<TaskQueue>(json) ?? new TaskQueue { Tasks = new List<BotTask>() };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading task queue, creating new one");
-                return new TaskQueue();
+                _logger.LogError(ex, "Error loading task queue from {TaskQueuePath}", _taskQueuePath);
+                return new TaskQueue { Tasks = new List<BotTask>() };
             }
         }
 
@@ -322,137 +336,151 @@ namespace OpenAutomate.BotAgent.Executor.Services
         {
             try
             {
-                queue.LastUpdated = DateTime.UtcNow;
-                var tempPath = TaskQueuePath + ".tmp";
-                
+                var tempPath = _taskQueuePath + ".tmp";
                 var json = JsonSerializer.Serialize(queue, new JsonSerializerOptions { WriteIndented = true });
+                
                 File.WriteAllText(tempPath, json);
                 
-                if (File.Exists(TaskQueuePath))
-                    File.Delete(TaskQueuePath);
+                if (File.Exists(_taskQueuePath))
+                    File.Delete(_taskQueuePath);
                     
-                File.Move(tempPath, TaskQueuePath);
+                File.Move(tempPath, _taskQueuePath);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving task queue");
-                throw;
+                _logger.LogError(ex, "Error saving task queue to {TaskQueuePath}", _taskQueuePath);
             }
         }
 
         public void AddTask(string packageId, string packageName, string version, string executionId = null)
         {
-            var scriptPath = Path.Combine(BotScriptsPath, $"{packageName}_{version}_{Guid.NewGuid():N}");
+            var scriptPath = Path.Combine(BotScriptsPath, packageName, version);
             AddTask(packageId, packageName, version, executionId, scriptPath);
         }
 
         public void AddTask(string packageId, string packageName, string version, string executionId, string scriptPath)
         {
-            var task = new BotTask
+            try
             {
-                ScriptPath = scriptPath,
-                PackageId = packageId,
-                PackageName = packageName,
-                Version = version,
-                ExecutionId = executionId
-            };
+                lock (_lockObject)
+                {
+                    var queue = LoadTaskQueue();
+                    
+                    var task = new BotTask
+                    {
+                        TaskId = Guid.NewGuid().ToString(),
+                        ExecutionId = executionId,
+                        PackageId = packageId,
+                        PackageName = packageName,
+                        Version = version,
+                        ScriptPath = scriptPath,
+                        Status = "Pending",
+                        CreatedAt = DateTime.UtcNow
+                    };
 
-            lock (_lockObject)
-            {
-                var queue = LoadTaskQueue();
-                queue.Tasks.Add(task);
-                SaveTaskQueueSafely(queue);
+                    queue.Tasks.Add(task);
+                    SaveTaskQueueSafely(queue);
+                }
             }
-
-            _logger.LogInformation("Task {TaskId} added to queue for package {PackageName} v{Version} at {ScriptPath}", 
-                task.TaskId, packageName, version, scriptPath);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding task for package {PackageName} v{Version}", packageName, version);
+            }
         }
 
         private async Task EnsureVirtualEnvironmentAsync(string scriptPath)
         {
-            var venvPath = Path.Combine(scriptPath, VirtualEnvName);
-            var pythonExePath = Path.Combine(venvPath, "Scripts", "python.exe");
-
-            // Check if virtual environment exists
-            if (!File.Exists(pythonExePath))
+            try
             {
-                _logger.LogInformation("Creating virtual environment at {VenvPath}", venvPath);
-                await CreateVirtualEnvironmentAsync(venvPath);
+                var venvPath = Path.Combine(scriptPath, VirtualEnvName);
+                var pythonExePath = Path.Combine(venvPath, "Scripts", "python.exe");
+
+                if (!File.Exists(pythonExePath))
+                {
+                    _logger.LogInformation("Creating virtual environment at: {VenvPath}", venvPath);
+                    await CreateVirtualEnvironmentAsync(venvPath);
+                }
+
+                var requirementsPath = Path.Combine(scriptPath, "requirements.txt");
+                if (File.Exists(requirementsPath))
+                {
+                    await InstallRequirementsAsync(pythonExePath, requirementsPath);
+                }
             }
-
-            // Install requirements if they exist
-            var requirementsPath = Path.Combine(scriptPath, "requirements.txt");
-            if (File.Exists(requirementsPath))
+            catch (Exception ex)
             {
-                _logger.LogInformation("Installing requirements from {RequirementsPath}", requirementsPath);
-                await InstallRequirementsAsync(pythonExePath, requirementsPath);
+                _logger.LogError(ex, "Error ensuring virtual environment for script path: {ScriptPath}", scriptPath);
+                throw;
             }
         }
 
         private async Task CreateVirtualEnvironmentAsync(string venvPath)
         {
             var result = await ExecuteCommandAsync("python", $"-m venv \"{venvPath}\"");
-            if (!result.Success)
+            if (result.ExitCode != 0)
             {
-                throw new InvalidOperationException($"Failed to create virtual environment: {result.Error}");
+                throw new Exception($"Failed to create virtual environment: {result.StandardError}");
             }
         }
 
         private async Task InstallRequirementsAsync(string pythonExePath, string requirementsPath)
         {
-            var args = $"-m pip install -r \"{requirementsPath}\" --trusted-host=pypi.python.org --trusted-host=pypi.org --trusted-host=files.pythonhosted.org";
-            var result = await ExecuteCommandAsync(pythonExePath, args);
-            
-            if (!result.Success)
+            var result = await ExecuteCommandAsync(pythonExePath, $"-m pip install -r \"{requirementsPath}\"");
+            if (result.ExitCode != 0)
             {
-                _logger.LogWarning("Failed to install requirements: {Error}", result.Error);
-                // Don't throw - let the bot try to run anyway
+                _logger.LogWarning("Failed to install requirements: {Error}", result.StandardError);
             }
         }
 
         private async Task<bool> ExecutePythonBotAsync(string scriptPath)
         {
-            var venvPath = Path.Combine(scriptPath, VirtualEnvName);
-            var pythonExePath = Path.Combine(venvPath, "Scripts", "python.exe");
-            
-            // Look for bot.py (from bot-example structure) or fallback to main.py
-            var botScriptPath = Path.Combine(scriptPath, "bot.py");
-            var mainScriptPath = Path.Combine(scriptPath, "main.py");
-            
-            string scriptToRun;
-            if (File.Exists(botScriptPath))
+            try
             {
-                scriptToRun = "bot.py";
-                WriteMessage("📄 Found bot.py, using bot-example structure", LogLevel.Information, ConsoleColor.Cyan);
-            }
-            else if (File.Exists(mainScriptPath))
-            {
-                scriptToRun = "main.py";
-                WriteMessage("📄 Found main.py, using template structure", LogLevel.Information, ConsoleColor.Cyan);
-            }
-            else
-            {
-                WriteMessage($"❌ Neither bot.py nor main.py found at {scriptPath}", LogLevel.Error, ConsoleColor.Red);
-                return false;
-            }
+                var venvPath = Path.Combine(scriptPath, VirtualEnvName);
+                var pythonExePath = Path.Combine(venvPath, "Scripts", "python.exe");
+                var botScriptPath = Path.Combine(scriptPath, "bot.py");
 
-            WriteMessage($"🚀 Executing Python bot: {pythonExePath} {scriptToRun}", LogLevel.Information, ConsoleColor.Green);
+                if (!File.Exists(pythonExePath))
+                {
+                    _logger.LogError("Python executable not found: {PythonExePath}", pythonExePath);
+                    return false;
+                }
 
-            var result = await ExecuteCommandAsync(
-                pythonExePath, 
-                scriptToRun, 
-                scriptPath,
-                timeoutMs: 600000 // 10 minutes timeout for bot execution
-            );
+                if (!File.Exists(botScriptPath))
+                {
+                    _logger.LogError("Bot script not found: {BotScriptPath}", botScriptPath);
+                    return false;
+                }
 
-            if (result.Success)
-            {
-                WriteMessage("🎉 Python bot completed successfully", LogLevel.Information, ConsoleColor.Green);
-                return true;
+                var result = await ExecuteCommandAsync(
+                    pythonExePath,
+                    $"\"{botScriptPath}\"",
+                    scriptPath,
+                    300000 // 5 minutes timeout
+                );
+
+                if (result.ExitCode == 0)
+                {
+                    _logger.LogInformation("Python bot executed successfully");
+                    if (!string.IsNullOrEmpty(result.StandardOutput))
+                    {
+                        _logger.LogInformation("Bot output: {Output}", result.StandardOutput);
+                    }
+                    return true;
+                }
+                else
+                {
+                    _logger.LogError("Python bot execution failed with exit code: {ExitCode}", result.ExitCode);
+                    if (!string.IsNullOrEmpty(result.StandardError))
+                    {
+                        _logger.LogError("Bot error: {Error}", result.StandardError);
+                    }
+                    return false;
+                }
             }
-            else
+            catch (Exception ex)
             {
-                WriteMessage($"💀 Python bot failed with exit code {result.ExitCode}: {result.Error}", LogLevel.Error, ConsoleColor.Red);
+                _logger.LogError(ex, "Error executing Python bot");
                 return false;
             }
         }
@@ -463,37 +491,30 @@ namespace OpenAutomate.BotAgent.Executor.Services
             string workingDirectory = null, 
             int timeoutMs = 60000)
         {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = executable,
-                Arguments = arguments,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true,
-                WorkingDirectory = workingDirectory ?? Environment.CurrentDirectory
-            };
-
-            // Add UTF-8 encoding environment variables to support Unicode output
-            startInfo.Environment["PYTHONIOENCODING"] = "utf-8";
-            startInfo.Environment["PYTHONLEGACYWINDOWSSTDIO"] = "0";
-            startInfo.StandardOutputEncoding = System.Text.Encoding.UTF8;
-            startInfo.StandardErrorEncoding = System.Text.Encoding.UTF8;
-
-            var outputBuilder = new StringBuilder();
-            var errorBuilder = new StringBuilder();
-            Process process = null;
-
             try
             {
-                process = new Process { StartInfo = startInfo };
-                
+                using var process = new Process();
+                process.StartInfo.FileName = executable;
+                process.StartInfo.Arguments = arguments;
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.RedirectStandardOutput = true;
+                process.StartInfo.RedirectStandardError = true;
+                process.StartInfo.CreateNoWindow = true;
+
+                if (!string.IsNullOrEmpty(workingDirectory))
+                {
+                    process.StartInfo.WorkingDirectory = workingDirectory;
+                }
+
+                var outputBuilder = new StringBuilder();
+                var errorBuilder = new StringBuilder();
+
                 process.OutputDataReceived += (sender, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
                     {
                         outputBuilder.AppendLine(e.Data);
-                        _logger.LogInformation("[stdout] {Output}", e.Data);
+                        _logger.LogDebug("Command output: {Output}", e.Data);
                     }
                 };
 
@@ -502,7 +523,7 @@ namespace OpenAutomate.BotAgent.Executor.Services
                     if (!string.IsNullOrEmpty(e.Data))
                     {
                         errorBuilder.AppendLine(e.Data);
-                        _logger.LogWarning("[stderr] {Error}", e.Data);
+                        _logger.LogDebug("Command error: {Error}", e.Data);
                     }
                 };
 
@@ -510,41 +531,38 @@ namespace OpenAutomate.BotAgent.Executor.Services
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
 
-                var completed = await Task.Run(() => process.WaitForExit(timeoutMs));
-
-                if (!completed)
+                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs));
+                
+                try
                 {
-                    _logger.LogWarning("Process timed out after {TimeoutMs}ms, killing process", timeoutMs);
+                    await process.WaitForExitAsync(cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Process timed out
                     try
                     {
-                        if (!process.HasExited)
-                        {
-                            process.Kill(entireProcessTree: true); // Kill entire process tree
-                            process.WaitForExit(5000); // Wait up to 5 seconds for cleanup
-                        }
+                        process.Kill(true);
+                        _logger.LogWarning("Command timed out and was killed: {Executable} {Arguments}", executable, arguments);
                     }
-                    catch (Exception ex)
+                    catch (Exception killEx)
                     {
-                        _logger.LogError(ex, "Failed to kill timed out process");
+                        _logger.LogError(killEx, "Error killing timed out process");
                     }
                     
                     return new CommandResult
                     {
-                        Success = false,
                         ExitCode = -1,
-                        Error = $"Process timed out after {timeoutMs}ms"
+                        StandardOutput = outputBuilder.ToString(),
+                        StandardError = "Command timed out"
                     };
                 }
 
-                // Ensure async output reading is complete
-                process.WaitForExit();
-
                 return new CommandResult
                 {
-                    Success = process.ExitCode == 0,
                     ExitCode = process.ExitCode,
-                    Output = outputBuilder.ToString(),
-                    Error = errorBuilder.ToString()
+                    StandardOutput = outputBuilder.ToString(),
+                    StandardError = errorBuilder.ToString()
                 };
             }
             catch (Exception ex)
@@ -552,46 +570,31 @@ namespace OpenAutomate.BotAgent.Executor.Services
                 _logger.LogError(ex, "Error executing command: {Executable} {Arguments}", executable, arguments);
                 return new CommandResult
                 {
-                    Success = false,
                     ExitCode = -1,
-                    Error = ex.Message
+                    StandardOutput = "",
+                    StandardError = ex.Message
                 };
-            }
-            finally
-            {
-                // Ensure proper cleanup
-                try
-                {
-                    if (process != null)
-                    {
-                        if (!process.HasExited)
-                        {
-                            process.Kill(entireProcessTree: true);
-                            process.WaitForExit(2000);
-                        }
-                        process.Dispose();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error during process cleanup");
-                }
             }
         }
 
         private void EnsureDirectoryExists()
         {
-            var directory = Path.GetDirectoryName(TaskQueuePath);
-            if (!Directory.Exists(directory))
+            try
             {
-                Directory.CreateDirectory(directory);
-                _logger.LogInformation("Created directory {Directory}", directory);
+                if (!Directory.Exists(BotScriptsPath))
+                {
+                    Directory.CreateDirectory(BotScriptsPath);
+                }
+
+                var taskQueueDir = Path.GetDirectoryName(_taskQueuePath);
+                if (!string.IsNullOrEmpty(taskQueueDir) && !Directory.Exists(taskQueueDir))
+                {
+                    Directory.CreateDirectory(taskQueueDir);
+                }
             }
-            
-            if (!Directory.Exists(BotScriptsPath))
+            catch (Exception ex)
             {
-                Directory.CreateDirectory(BotScriptsPath);
-                _logger.LogInformation("Created bot scripts directory {Directory}", BotScriptsPath);
+                _logger.LogError(ex, "Error creating required directories");
             }
         }
 
@@ -600,17 +603,23 @@ namespace OpenAutomate.BotAgent.Executor.Services
             if (_disposed)
                 return;
 
-            _disposed = true;
-
-            // Dispose the semaphore
             try
             {
                 _executorSemaphore?.Dispose();
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Error disposing semaphore (non-critical)");
+                _logger.LogError(ex, "Error disposing executor semaphore");
             }
+
+            _disposed = true;
         }
+    }
+
+    public class CommandResult
+    {
+        public int ExitCode { get; set; }
+        public string StandardOutput { get; set; } = "";
+        public string StandardError { get; set; } = "";
     }
 } 

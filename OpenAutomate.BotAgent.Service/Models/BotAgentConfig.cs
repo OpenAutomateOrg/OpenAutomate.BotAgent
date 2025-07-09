@@ -1,3 +1,5 @@
+using System;
+
 namespace OpenAutomate.BotAgent.Service.Models
 {
     /// <summary>
@@ -6,10 +8,29 @@ namespace OpenAutomate.BotAgent.Service.Models
     public class BotAgentConfig
     {
         /// <summary>
-        /// Server URL including tenant slug (e.g., https://openautomateapp.com/acme-corp)
+        /// Orchestrator URL including tenant slug (e.g., https://cloud.openautomate.me/acme-corp)
+        /// This is the frontend URL that users configure. Used for initial discovery only.
         /// </summary>
-        public string ServerUrl { get; set; }
-        
+        public string OrchestratorUrl { get; set; }
+
+        /// <summary>
+        /// Backend API URL discovered from the orchestrator (e.g., https://api.openautomate.me)
+        /// This is cached after initial discovery and used for all API calls.
+        /// </summary>
+        public string BackendApiUrl { get; set; }
+
+        /// <summary>
+        /// DEPRECATED: Use OrchestratorUrl instead. Maintained for backward compatibility.
+        /// This property is not serialized to avoid confusion in config files.
+        /// </summary>
+        [Obsolete("Use OrchestratorUrl instead. This property is maintained for backward compatibility.")]
+        [System.Text.Json.Serialization.JsonIgnore]
+        public string ServerUrl
+        {
+            get => OrchestratorUrl;
+            set => OrchestratorUrl = value;
+        }
+
         /// <summary>
         /// Machine key for authentication with the orchestrator
         /// </summary>
