@@ -300,6 +300,9 @@ namespace OpenAutomate.BotAgent.UI.ViewModels
                 // Reset connection status cache to ensure we get a fresh status
                 _apiClient.ResetConnectionStatusCache();
                 
+                // Allow time for the service to process the configuration change and initiate connection
+                await Task.Delay(2000);
+                
                 // Then attempt to connect
                 var success = await _apiClient.ConnectAsync();
                 
