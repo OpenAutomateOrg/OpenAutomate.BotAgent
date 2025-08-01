@@ -371,11 +371,24 @@ namespace OpenAutomate.BotAgent.Service.Services
                 // Get the current config to preserve values not included in the update
                 var currentConfig = _configService.GetConfiguration();
                 
-                // Update the configuration while preserving cached values
+                // Determine the final OrchestratorUrl that will be saved
+                var finalOrchestratorUrl = newConfig.OrchestratorUrl ?? currentConfig.OrchestratorUrl;
+                
+                // Check if OrchestratorUrl has changed and clear BackendApiUrl if it has
+                string backendApiUrl = newConfig.BackendApiUrl ?? currentConfig.BackendApiUrl;
+                if (!string.IsNullOrEmpty(currentConfig.OrchestratorUrl) && 
+                    !string.Equals(currentConfig.OrchestratorUrl, finalOrchestratorUrl, StringComparison.OrdinalIgnoreCase))
+                {
+                    backendApiUrl = null; // Clear cached backend URL to force re-discovery
+                    _logger.LogInformation("OrchestratorUrl has changed from '{OldUrl}' to '{NewUrl}'. Clearing cached BackendApiUrl to force re-discovery.", 
+                        currentConfig.OrchestratorUrl, finalOrchestratorUrl);
+                }
+                
+                // Update the configuration
                 var updatedConfig = new BotAgentConfig
                 {
-                    OrchestratorUrl = newConfig.OrchestratorUrl ?? currentConfig.OrchestratorUrl,
-                    BackendApiUrl = newConfig.BackendApiUrl ?? currentConfig.BackendApiUrl, // Preserve cached backend URL
+                    OrchestratorUrl = finalOrchestratorUrl,
+                    BackendApiUrl = backendApiUrl,
                     MachineKey = newConfig.MachineKey ?? currentConfig.MachineKey,
                     AutoStart = newConfig.AutoStart,
                     LogLevel = newConfig.LogLevel ?? currentConfig.LogLevel,
@@ -389,6 +402,34 @@ namespace OpenAutomate.BotAgent.Service.Services
                 if (!string.IsNullOrEmpty(newConfig.MachineKey))
                 {
                     _machineKeyManager.SetMachineKey(newConfig.MachineKey);
+                }
+                
+                // If OrchestratorUrl changed and BackendApiUrl was cleared, trigger a reconnection
+                if (backendApiUrl == null && !string.IsNullOrEmpty(finalOrchestratorUrl))
+                {
+                    _logger.LogInformation("Triggering reconnection due to OrchestratorUrl change");
+                    // Don't await this to avoid blocking the HTTP response
+                    _ = Task.Run(async () => 
+                    {
+                        try
+                        {
+                            // Disconnect first if connected
+                            if (_serverCommunication.IsConnected)
+                            {
+                                await _serverCommunication.DisconnectAsync();
+                            }
+                            
+                            // Wait a moment for clean disconnect
+                            await Task.Delay(500);
+                            
+                            // Attempt to reconnect with new configuration
+                            await _serverCommunication.ConnectAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error during automatic reconnection after configuration change");
+                        }
+                    });
                 }
                 
                 await SendJsonResponseAsync(response, new { success = true });
