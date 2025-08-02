@@ -65,8 +65,15 @@ namespace OpenAutomate.BotAgent.Service.Services
 
             string executorPath;
 
+            // First try to find executor in the same directory (unified deployment)
+            var sameDirectoryPath = Path.Combine(baseDirectory, "OpenAutomate.BotAgent.Executor.exe");
+            if (File.Exists(sameDirectoryPath))
+            {
+                executorPath = sameDirectoryPath;
+                _logger.LogInformation("Found executor in same directory (unified deployment)");
+            }
             // Check if we're running from the installed location (Service folder exists)
-            if (baseDirectory.EndsWith("Service\\", StringComparison.OrdinalIgnoreCase) ||
+            else if (baseDirectory.EndsWith("Service\\", StringComparison.OrdinalIgnoreCase) ||
                 baseDirectory.EndsWith("Service", StringComparison.OrdinalIgnoreCase))
             {
                 // Running from installed location - go up one level and into Executor folder

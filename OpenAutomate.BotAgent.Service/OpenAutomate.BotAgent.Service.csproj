@@ -5,6 +5,11 @@
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <UserSecretsId>dotnet-OpenAutomate.BotAgent.Service-e1f75e5d-8c43-490f-8c51-8e5d6ca3a2aa</UserSecretsId>
+    <UseAppHost>true</UseAppHost>
+    <SelfContained>false</SelfContained>
+    <PublishSingleFile>false</PublishSingleFile>
+    <GenerateReferenceAssemblyAttribute>false</GenerateReferenceAssemblyAttribute>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
   </PropertyGroup>
 
   <ItemGroup>
