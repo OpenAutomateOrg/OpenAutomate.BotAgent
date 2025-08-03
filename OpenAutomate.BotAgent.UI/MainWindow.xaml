@@ -15,7 +15,8 @@
         AllowsTransparency="True"
         FontFamily="Segoe UI"
         BorderThickness="0"
-        ResizeMode="CanResizeWithGrip">
+        ResizeMode="CanResizeWithGrip"
+        Icon="pack://application:,,,/agent.ico">
     
     <Window.Resources>
         <vm:MainViewModel x:Key="MainViewModel" />
