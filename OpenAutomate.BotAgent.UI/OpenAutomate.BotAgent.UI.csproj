@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>agent.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,12 +17,50 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="agent.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.1" />
     <PackageReference Include="System.Net.Http.Json" Version="8.0.1" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\OpenAutomate.BotAgent.Service\OpenAutomate.BotAgent.Service.csproj" />
+    <ProjectReference Include="..\OpenAutomate.BotAgent.Executor\OpenAutomate.BotAgent.Executor.csproj" />
   </ItemGroup>
+
+  <!-- Copy Service and Executor executables and runtime dependencies only -->
+  <Target Name="CopyServiceAndExecutorFiles" AfterTargets="Build">
+    <ItemGroup>
+      <!-- Service files - exclude reference assemblies and debug info -->
+      <ServiceFiles Include="..\OpenAutomate.BotAgent.Service\bin\$(Configuration)\net8.0\*.exe" />
+      <ServiceFiles Include="..\OpenAutomate.BotAgent.Service\bin\$(Configuration)\net8.0\*.dll" Exclude="..\OpenAutomate.BotAgent.Service\bin\$(Configuration)\net8.0\ref\**\*.*" />
+      <ServiceFiles Include="..\OpenAutomate.BotAgent.Service\bin\$(Configuration)\net8.0\*.json" />
+      <ServiceFiles Include="..\OpenAutomate.BotAgent.Service\bin\$(Configuration)\net8.0\runtimes\**\*.*" />
+      
+      <!-- Executor files - exclude reference assemblies and debug info -->
+      <ExecutorFiles Include="..\OpenAutomate.BotAgent.Executor\bin\$(Configuration)\net8.0\*.exe" />
+      <ExecutorFiles Include="..\OpenAutomate.BotAgent.Executor\bin\$(Configuration)\net8.0\*.dll" Exclude="..\OpenAutomate.BotAgent.Executor\bin\$(Configuration)\net8.0\ref\**\*.*" />
+      <ExecutorFiles Include="..\OpenAutomate.BotAgent.Executor\bin\$(Configuration)\net8.0\*.json" />
+      <ExecutorFiles Include="..\OpenAutomate.BotAgent.Executor\bin\$(Configuration)\net8.0\runtimes\**\*.*" />
+    </ItemGroup>
+    
+    <!-- Copy Service files -->
+    <Copy SourceFiles="@(ServiceFiles)" 
+          DestinationFiles="@(ServiceFiles->'$(OutputPath)%(RecursiveDir)%(Filename)%(Extension)')" 
+          SkipUnchangedFiles="true" />
+    
+    <!-- Copy Executor files -->
+    <Copy SourceFiles="@(ExecutorFiles)" 
+          DestinationFiles="@(ExecutorFiles->'$(OutputPath)%(RecursiveDir)%(Filename)%(Extension)')" 
+          SkipUnchangedFiles="true" />
+    
+    <!-- Copy installation scripts -->
+    <Copy SourceFiles="..\InstallService.bat" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\UninstallService.bat" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+    
+    <Message Text="Copied Service and Executor runtime files (excluding reference assemblies) to UI output directory" Importance="high" />
+  </Target>
 
 </Project>
