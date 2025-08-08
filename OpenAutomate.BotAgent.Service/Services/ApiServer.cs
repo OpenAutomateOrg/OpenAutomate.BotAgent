@@ -137,8 +137,8 @@ namespace OpenAutomate.BotAgent.Service.Services
                 var request = context.Request;
                 var response = context.Response;
 
-                // Extract the endpoint path
-                var path = request.Url.AbsolutePath.ToLowerInvariant();
+                // Extract the endpoint path (preserve original casing for dynamic parameters like asset keys)
+                var path = request.Url.AbsolutePath;
                 var method = request.HttpMethod.ToUpperInvariant();
 
                 _logger.LogDebug("Received {Method} request for {Path}", method, path);
@@ -179,36 +179,45 @@ namespace OpenAutomate.BotAgent.Service.Services
         /// </summary>
         private async Task RouteRequestAsync(HttpListenerRequest request, HttpListenerResponse response, string path, string method)
         {
-            switch (path)
+            // Match known static routes case-insensitively
+            if (string.Equals(path, "/api/health", StringComparison.OrdinalIgnoreCase))
             {
-                case "/api/health":
-                    await HandleHealthRequestAsync(request, response);
-                    break;
-
-                case "/api/status":
-                    await HandleStatusRequestAsync(request, response, method);
-                    break;
-
-                case "/api/config":
-                    await HandleConfigRequestAsync(request, response, method);
-                    break;
-
-                case "/api/connect":
-                    await HandleConnectionRequestAsync(request, response, method, isConnect: true);
-                    break;
-
-                case "/api/disconnect":
-                    await HandleConnectionRequestAsync(request, response, method, isConnect: false);
-                    break;
-
-                case "/api/assets":
-                    await HandleAssetRequestAsync(request, response, method);
-                    break;
-
-                default:
-                    await HandleDynamicRouteAsync(request, response, path, method);
-                    break;
+                await HandleHealthRequestAsync(request, response);
+                return;
             }
+
+            if (string.Equals(path, "/api/status", StringComparison.OrdinalIgnoreCase))
+            {
+                await HandleStatusRequestAsync(request, response, method);
+                return;
+            }
+
+            if (string.Equals(path, "/api/config", StringComparison.OrdinalIgnoreCase))
+            {
+                await HandleConfigRequestAsync(request, response, method);
+                return;
+            }
+
+            if (string.Equals(path, "/api/connect", StringComparison.OrdinalIgnoreCase))
+            {
+                await HandleConnectionRequestAsync(request, response, method, isConnect: true);
+                return;
+            }
+
+            if (string.Equals(path, "/api/disconnect", StringComparison.OrdinalIgnoreCase))
+            {
+                await HandleConnectionRequestAsync(request, response, method, isConnect: false);
+                return;
+            }
+
+            if (string.Equals(path, "/api/assets", StringComparison.OrdinalIgnoreCase))
+            {
+                await HandleAssetRequestAsync(request, response, method);
+                return;
+            }
+
+            // Fallback: handle dynamic routes
+            await HandleDynamicRouteAsync(request, response, path, method);
         }
 
         /// <summary>
@@ -280,8 +289,8 @@ namespace OpenAutomate.BotAgent.Service.Services
         /// </summary>
         private async Task HandleDynamicRouteAsync(HttpListenerRequest request, HttpListenerResponse response, string path, string method)
         {
-            // Check if the path matches /api/assets/{key}
-            if (path.StartsWith("/api/assets/") && method == "GET")
+            // Check if the path matches /api/assets/{key} (case-insensitive route, preserve key casing)
+            if (path.StartsWith("/api/assets/", StringComparison.OrdinalIgnoreCase) && method == "GET")
             {
                 var key = path.Substring("/api/assets/".Length);
                 if (!string.IsNullOrEmpty(key))
@@ -292,7 +301,9 @@ namespace OpenAutomate.BotAgent.Service.Services
             }
 
             // Check if the path matches /api/execution/{executionId}/status
-            if (path.StartsWith("/api/execution/") && path.EndsWith("/status") && method == "POST")
+            if (path.StartsWith("/api/execution/", StringComparison.OrdinalIgnoreCase) &&
+                path.EndsWith("/status", StringComparison.OrdinalIgnoreCase) &&
+                method == "POST")
             {
                 var pathParts = path.Split('/');
                 if (pathParts.Length >= 4)
