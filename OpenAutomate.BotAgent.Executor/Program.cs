@@ -80,10 +80,9 @@ namespace OpenAutomate.BotAgent.Executor
             // Initialize Serilog logger for file logging with execution ID
             var serilogLogger = Logger.Initialize(executionId);
             
-            // Also create Microsoft.Extensions.Logging logger for compatibility
+            // Also create Microsoft.Extensions.Logging logger for compatibility (avoid Console provider to prevent runtime assembly issues)
             var loggerFactory = LoggerFactory.Create(builder =>
-                builder.AddConsole()
-                       .AddSerilog(serilogLogger)
+                builder.AddSerilog(serilogLogger)
                        .SetMinimumLevel(LogLevel.Information));
             var logger = loggerFactory.CreateLogger<Program>();
 
@@ -191,8 +190,7 @@ namespace OpenAutomate.BotAgent.Executor
                     
                     // Create a new logger factory for log processing
                     var logProcessingFactory = LoggerFactory.Create(builder =>
-                        builder.AddConsole()
-                               .SetMinimumLevel(LogLevel.Information));
+                        builder.SetMinimumLevel(LogLevel.Information));
                     
                     try
                     {
@@ -367,8 +365,7 @@ namespace OpenAutomate.BotAgent.Executor
             
             // Also create Microsoft.Extensions.Logging logger for compatibility
             var loggerFactory = LoggerFactory.Create(builder =>
-                builder.AddConsole()
-                       .AddSerilog(serilogLogger)
+                builder.AddSerilog(serilogLogger)
                        .SetMinimumLevel(LogLevel.Information));
             var logger = loggerFactory.CreateLogger<Program>();
 

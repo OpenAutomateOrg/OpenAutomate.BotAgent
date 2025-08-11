@@ -208,14 +208,20 @@ namespace OpenAutomate.BotAgent.Service.Services
             }
             
             var config = _configService.GetConfiguration();
-            if (string.IsNullOrEmpty(config.ServerUrl))
+            // Use discovered backend API and tenant slug derived from orchestrator URL
+            if (string.IsNullOrEmpty(config.BackendApiUrl))
             {
-                throw new InvalidOperationException("Server URL not configured");
+                throw new InvalidOperationException("Backend API URL not configured. Connect the agent to discover the API URL.");
+            }
+            if (string.IsNullOrEmpty(config.OrchestratorUrl))
+            {
+                throw new InvalidOperationException("Orchestrator URL not configured");
             }
             
             try
             {
-                var serverUrl = config.ServerUrl.TrimEnd('/');
+                var apiUrl = config.BackendApiUrl.TrimEnd('/');
+                var tenantSlug = ExtractTenantSlug(config.OrchestratorUrl);
                 
                 // Create request with machine key in the body
                 var requestData = new { MachineKey = machineKey };
@@ -226,7 +232,7 @@ namespace OpenAutomate.BotAgent.Service.Services
                 
                 // POST to the bot-agent assets endpoint
                 var response = await _httpClient.PostAsync(
-                    $"{serverUrl}/api/bot-agent/assets/key/{key}",
+                    $"{apiUrl}/{tenantSlug}/api/bot-agent/assets/key/{Uri.EscapeDataString(key)}",
                     content);
                 
                 if (response.IsSuccessStatusCode)
@@ -313,9 +319,13 @@ namespace OpenAutomate.BotAgent.Service.Services
             }
 
             var config = _configService.GetConfiguration();
-            if (string.IsNullOrEmpty(config.ServerUrl))
+            if (string.IsNullOrEmpty(config.BackendApiUrl))
             {
-                throw new InvalidOperationException("Server URL not configured");
+                throw new InvalidOperationException("Backend API URL not configured. Connect the agent to discover the API URL.");
+            }
+            if (string.IsNullOrEmpty(config.OrchestratorUrl))
+            {
+                throw new InvalidOperationException("Orchestrator URL not configured");
             }
         }
 
@@ -325,7 +335,8 @@ namespace OpenAutomate.BotAgent.Service.Services
         private async Task<HttpResponseMessage> FetchAccessibleAssetsFromServerAsync(string machineKey)
         {
             var config = _configService.GetConfiguration();
-            var serverUrl = config.ServerUrl.TrimEnd('/');
+            var apiUrl = config.BackendApiUrl.TrimEnd('/');
+            var tenantSlug = ExtractTenantSlug(config.OrchestratorUrl);
 
             // Create request with machine key in the body
             var requestData = new { MachineKey = machineKey };
@@ -336,11 +347,25 @@ namespace OpenAutomate.BotAgent.Service.Services
 
             // POST to the bot-agent accessible assets endpoint
             var response = await _httpClient.PostAsync(
-                $"{serverUrl}/api/bot-agent/assets/accessible",
+                $"{apiUrl}/{tenantSlug}/api/bot-agent/assets/accessible",
                 content);
 
             response.EnsureSuccessStatusCode();
             return response;
+        }
+
+        /// <summary>
+        /// Extracts the tenant slug from the orchestrator URL
+        /// </summary>
+        private static string ExtractTenantSlug(string orchestratorUrl)
+        {
+            var uri = new Uri(orchestratorUrl.TrimEnd('/'));
+            var tenantSlug = uri.AbsolutePath.Trim('/');
+            if (string.IsNullOrEmpty(tenantSlug))
+            {
+                throw new InvalidOperationException("Orchestrator URL must include a tenant slug");
+            }
+            return tenantSlug;
         }
 
         /// <summary>
