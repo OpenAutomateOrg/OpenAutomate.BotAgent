@@ -514,7 +514,7 @@ namespace OpenAutomate.BotAgent.Executor.Services
                     if (!string.IsNullOrEmpty(e.Data))
                     {
                         outputBuilder.AppendLine(e.Data);
-                        _logger.LogDebug("Command output: {Output}", e.Data);
+                        LogProcessLine("stdout", e.Data);
                     }
                 };
 
@@ -523,7 +523,7 @@ namespace OpenAutomate.BotAgent.Executor.Services
                     if (!string.IsNullOrEmpty(e.Data))
                     {
                         errorBuilder.AppendLine(e.Data);
-                        _logger.LogDebug("Command error: {Error}", e.Data);
+                        LogProcessLine("stderr", e.Data);
                     }
                 };
 
@@ -575,6 +575,27 @@ namespace OpenAutomate.BotAgent.Executor.Services
                     StandardError = ex.Message
                 };
             }
+        }
+
+        /// <summary>
+        /// Maps common subprocess output patterns to log levels and writes a unified log entry
+        /// </summary>
+        private void LogProcessLine(string source, string line)
+        {
+            if (line.IndexOf("INFO -", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                _logger.LogInformation("{Line}", line);
+                return;
+            }
+
+            if (line.IndexOf("WARNING:", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                line.IndexOf("WARN -", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                _logger.LogWarning("{Line}", line);
+                return;
+            }
+
+            _logger.LogDebug("{Line}", line);
         }
 
         private void EnsureDirectoryExists()
